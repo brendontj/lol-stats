@@ -1,9 +1,8 @@
-package httpClient
+package lolsports
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/brendontj/lol-stats/pkg/lolsports"
 	"log"
 	"net/http"
 	"time"
@@ -12,10 +11,11 @@ import (
 const EmptyField = ""
 
 type EsportsAPIScrapper interface {
-	GetLeagues(region string) (*lolsports.LeagueData, error)
-	GetSchedule(region, leagueID, pageToken string) (*lolsports.ScheduleData, error)
-	GetEventsLive(region string) (*lolsports.EventsLiveData, error)
-	GetEventDetail(region, eventID string) (*lolsports.EventDetailData, error)
+	GetLeagues(region string) (*LeagueData, error)
+	GetSchedule(region, leagueID, pageToken string) (*ScheduleData, error)
+	GetEventsLive(region string) (*EventsLiveData, error)
+	GetEventDetail(region, eventID string) (*EventDetailData, error)
+	Close()
 }
 
 type PersistedDataClient struct {
@@ -24,7 +24,7 @@ type PersistedDataClient struct {
 	httpClient *http.Client
 }
 
-func (h PersistedDataClient) GetLeagues(region string) (*lolsports.LeagueData, error) {
+func (h PersistedDataClient) GetLeagues(region string) (*LeagueData, error) {
 	req, err := http.NewRequest(
 		http.MethodGet,
 		fmt.Sprint(h.baseURI,"getLeagues?hl=", region),
@@ -44,7 +44,7 @@ func (h PersistedDataClient) GetLeagues(region string) (*lolsports.LeagueData, e
 		return nil, err
 	}
 
-	leagueData := new(lolsports.LeagueData)
+	leagueData := new(LeagueData)
 
 	if err := json.NewDecoder(res.Body).Decode(&leagueData); err != nil {
 		log.Printf("error deserializing weather data\n")
@@ -53,7 +53,7 @@ func (h PersistedDataClient) GetLeagues(region string) (*lolsports.LeagueData, e
 	return leagueData, nil
 }
 
-func (h PersistedDataClient) GetSchedule(region, leagueID, pageToken string) (*lolsports.ScheduleData, error) {
+func (h PersistedDataClient) GetSchedule(region, leagueID, pageToken string) (*ScheduleData, error) {
 	if leagueID != EmptyField {
 		leagueID = fmt.Sprint("&leagueId=", leagueID)
 	}
@@ -81,7 +81,7 @@ func (h PersistedDataClient) GetSchedule(region, leagueID, pageToken string) (*l
 		return nil, err
 	}
 
-	scheduleData := new(lolsports.ScheduleData)
+	scheduleData := new(ScheduleData)
 
 	if err := json.NewDecoder(res.Body).Decode(&scheduleData); err != nil {
 		log.Printf("error deserializing weather data\n")
@@ -90,7 +90,7 @@ func (h PersistedDataClient) GetSchedule(region, leagueID, pageToken string) (*l
 	return scheduleData, nil
 }
 
-func (h PersistedDataClient) GetEventsLive(region string) (*lolsports.EventsLiveData, error) {
+func (h PersistedDataClient) GetEventsLive(region string) (*EventsLiveData, error) {
 	req, err := http.NewRequest(
 		http.MethodGet,
 		fmt.Sprint(h.baseURI,"getLive?hl=", region),
@@ -110,7 +110,7 @@ func (h PersistedDataClient) GetEventsLive(region string) (*lolsports.EventsLive
 		return nil, err
 	}
 
-	eventsLiveData := new(lolsports.EventsLiveData)
+	eventsLiveData := new(EventsLiveData)
 
 	if err := json.NewDecoder(res.Body).Decode(&eventsLiveData); err != nil {
 		log.Printf("error deserializing weather data\n")
@@ -119,7 +119,7 @@ func (h PersistedDataClient) GetEventsLive(region string) (*lolsports.EventsLive
 	return eventsLiveData, nil
 }
 
-func (h PersistedDataClient) GetEventDetail(region, eventID string) (*lolsports.EventDetailData, error) {
+func (h PersistedDataClient) GetEventDetail(region, eventID string) (*EventDetailData, error) {
 	if eventID != EmptyField {
 		eventID = fmt.Sprint("&id=", eventID)
 	}
@@ -142,13 +142,17 @@ func (h PersistedDataClient) GetEventDetail(region, eventID string) (*lolsports.
 		return nil, err
 	}
 
-	eventDetailData := new(lolsports.EventDetailData)
+	eventDetailData := new(EventDetailData)
 
 	if err := json.NewDecoder(res.Body).Decode(&eventDetailData); err != nil {
 		log.Printf("error deserializing weather data\n")
 		return nil, err
 	}
 	return eventDetailData, nil
+}
+
+func (h *PersistedDataClient) Close() {
+	h.httpClient = nil
 }
 
 func NewLolStatsClient(baseURI, token string) EsportsAPIScrapper {
