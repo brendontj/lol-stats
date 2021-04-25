@@ -62,3 +62,39 @@ VALUES ($1, $2, $3, $4, $5, $6, $7);`
 	fmt.Println("Successfully inserted all leagues into database")
 	return nil
 }
+
+func (l *lolService) GetLeagues() ([]League,error) {
+	queryGetAllLeagues := `
+SELECT 
+	external_reference,
+	slug,
+	name,
+	region,
+	image,
+	priority
+FROM league.leagues;
+`
+	rows, err := l.storage.Query(context.Background(), queryGetAllLeagues)
+	if err != nil {
+		return nil, errors.Wrap(err,"unable to get league from storage")
+	}
+	defer rows.Close()
+
+	var leagues []League
+	for rows.Next() {
+		var l League
+		err = rows.Scan(
+			&l.ID,
+			&l.Slug,
+			&l.Name,
+			&l.Region,
+			&l.Image,
+			&l.Priority)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to scan league with external reference = %s", l.ID)
+		}
+		leagues = append(leagues, l)
+	}
+
+	return leagues, nil
+}

@@ -46,10 +46,10 @@ func main() {
 	app := application{}
 	app.init()
 
-	err := app.lolService.PopulateLeagues()
-	if err != nil {
-		panic("Unable to populate database with league of legends professional leagues")
-	}
+	//err := app.lolService.PopulateLeagues()
+	//if err != nil {
+	//	panic("Unable to populate database with league of legends professional leagues")
+	//}
 
 	app.close()
 }
