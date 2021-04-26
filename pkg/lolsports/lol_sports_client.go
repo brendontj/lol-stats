@@ -72,7 +72,7 @@ func (h PersistedDataClient) GetSchedule(region, leagueID, pageToken string) (*S
 		return nil, err
 	}
 
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Accept", "*/*")
 	req.Header.Add("x-api-key", h.token)
 
 	res, err := h.httpClient.Do(req)
@@ -165,7 +165,7 @@ func NewLolStatsClient(baseURI, token string) EsportsAPIScrapper {
 		baseURI: baseURI,
 		token:   token,
 		httpClient: &http.Client{
-			Timeout:   10 * time.Second,
+			Timeout:   300 * time.Second,
 			Transport: t,
 		},
 	}

@@ -102,7 +102,7 @@ func NewLolFeedClient(baseURI, token string) FeedAPIScrapper {
 		baseURI: baseURI,
 		token:   token,
 		httpClient: &http.Client{
-			Timeout:   10 * time.Second,
+			Timeout:   300 * time.Second,
 			Transport: t,
 		},
 	}

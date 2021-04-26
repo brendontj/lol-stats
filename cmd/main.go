@@ -6,6 +6,8 @@ import (
 	"github.com/brendontj/lol-stats/pkg/lolsports"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"os"
+	"sync"
+	"time"
 )
 
 type application struct {
@@ -46,10 +48,31 @@ func main() {
 	app := application{}
 	app.init()
 
-	//err := app.lolService.PopulateLeagues()
-	//if err != nil {
-	//	panic("Unable to populate database with league of legends professional leagues")
-	//}
+	err := app.lolService.PopulateLeagues()
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Println("Successfully inserted all leagues into database")
+
+	leagues, err := app.lolService.GetLeagues()
+	if err != nil {
+		panic("Unable to get leagues from database")
+	}
+
+	var wg sync.WaitGroup
+	for _, league := range leagues {
+		wg.Add(1)
+		go func(leagueID string) {
+			defer wg.Done()
+			err := app.lolService.PopulateDBScheduleByLeague(leagueID)
+			if err != nil {
+				panic(err.Error())
+			}
+		}(league.ID)
+		time.Sleep(time.Second * 5)
+	}
+	wg.Wait()
+	fmt.Println("Successfully inserted all events of schedule into database")
 
 	app.close()
 }
