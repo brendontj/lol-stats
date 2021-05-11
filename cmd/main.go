@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"os"
 	"sync"
-	"time"
 )
 
 type application struct {
@@ -63,13 +62,13 @@ func main() {
 	for _, league := range leagues {
 		wg.Add(1)
 		go func(leagueID string) {
+			fmt.Printf("Starting inserts of games from league: %v \n", leagueID)
 			defer wg.Done()
 			err := app.lolService.PopulateDBScheduleByLeague(leagueID)
 			if err != nil {
 				panic(err.Error())
 			}
 		}(league.ID)
-		time.Sleep(time.Second * 5)
 	}
 	wg.Wait()
 	fmt.Println("Successfully inserted all events of schedule into database")
