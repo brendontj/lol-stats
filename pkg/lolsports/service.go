@@ -11,7 +11,8 @@ import (
 type Service interface {
 	PopulateLeagues() error
 	GetLeagues() ([]League,error)
-	PopulateDBScheduleByLeague(leagueExternalReference string) error
+	GetEventsExternalRef() ([]*string, error)
+	PopulateDBScheduleOfLeague(leagueExternalReference string) error
 }
 
 type lolService struct {
@@ -100,7 +101,7 @@ FROM league.leagues;
 	return leagues, nil
 }
 
-func (l *lolService) PopulateDBScheduleByLeague(leagueExternalReference string) error {
+func (l *lolService) PopulateDBScheduleOfLeague(leagueExternalReference string) error {
 	olderPage, err := l.populateWithMostRecentScheduleByLeague(leagueExternalReference)
 	if err != nil {
 		return errors.Wrap(err, "unable to populate with the most recent schedule")
@@ -184,4 +185,30 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
 		return errors.Wrapf(err, fmt.Sprintf("unable to store match with id = %s", event.Match.ID))
 	}
 	return nil
+}
+
+func (l *lolService) GetEventsExternalRef() ([]*string,error) {
+	queryGetAllEventsRef := `
+SELECT 
+	e.external_reference
+FROM schedule.matches e
+where e.state = 'completed';
+`
+	rows, err := l.storage.Query(context.Background(), queryGetAllEventsRef)
+	if err != nil {
+		return nil, errors.Wrap(err,"unable to get events from storage")
+	}
+	defer rows.Close()
+
+	var eventIDs []*string
+	for rows.Next() {
+		var s *string
+		err = rows.Scan(&s)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to scan event with external reference = %s", s)
+		}
+		eventIDs = append(eventIDs, s)
+	}
+
+	return eventIDs, nil
 }

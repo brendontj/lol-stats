@@ -7,6 +7,8 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"os"
 	"sync"
+
+	//"sync"
 )
 
 type application struct {
@@ -64,7 +66,7 @@ func main() {
 		go func(leagueID string) {
 			fmt.Printf("Starting inserts of games from league: %v \n", leagueID)
 			defer wg.Done()
-			err := app.lolService.PopulateDBScheduleByLeague(leagueID)
+			err := app.lolService.PopulateDBScheduleOfLeague(leagueID)
 			if err != nil {
 				panic(err.Error())
 			}
@@ -72,6 +74,44 @@ func main() {
 	}
 	wg.Wait()
 	fmt.Println("Successfully inserted all events of schedule into database")
+
+	eventIDs, err := app.lolService.GetEventsExternalRef()
+	if err != nil {
+		panic("Unable to get events from database")
+	}
+
+	//for _, eventID := range eventIDs {
+	//	wg.Add(1)
+	//	go func(eventID string) {
+	//		fmt.Printf("Inserting detailing of event: %v \n", eventID)
+	//		defer wg.Done()
+	//		err := app.lolService.PopulateDBWithEventDetail(eventID)
+	//		if err != nil {
+	//			panic(err.Error())
+	//		}
+	//	}(eventID)
+	//}
+	//wg.Wait()
+	//fmt.Println("Successfully inserted all details of events into database")
+	//
+	//gamesID, err := app.lolService.GetGames()
+	//if err != nil {
+	//	panic("Unable to get games from database")
+	//}
+	//
+	//for _, gameID := range gamesID {
+	//	wg.Add(1)
+	//	go func(gameID string) {
+	//		fmt.Printf("Inserting game data of gameID: %v \n", gameID)
+	//		defer wg.Done()
+	//		err := app.lolService.PopulateDBWithGameData(gameID)
+	//		if err != nil {
+	//			panic(err.Error())
+	//		}
+	//	}(gameID)
+	//}
+	//wg.Wait()
+	//fmt.Println("Successfully inserted game data of all games into database")
 
 	app.close()
 }
