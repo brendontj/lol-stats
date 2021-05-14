@@ -13,6 +13,7 @@ type Service interface {
 	GetLeagues() ([]League,error)
 	GetEventsExternalRef() ([]*string, error)
 	PopulateDBScheduleOfLeague(leagueExternalReference string) error
+	PopulateDBWithEventDetail(eventExternalReference string) error
 }
 
 type lolService struct {
@@ -125,6 +126,54 @@ func (l *lolService) PopulateDBScheduleOfLeague(leagueExternalReference string) 
 		}
 	}
 
+	return nil
+}
+
+func (l *lolService) PopulateDBWithEventDetail(eventExternalReference string) error {
+	eventDetail, err := l.esportsApiClient.GetEventDetail("pt-BR", eventExternalReference)
+	if err != nil {
+		return errors.Wrapf(err, "unable to get event detail for event external reference: %v", eventExternalReference)
+	}
+
+	if eventDetail.Data.Event.ID == EmptyField || eventDetail.Data.Event.Tournament.TournamentID == EmptyField || eventDetail.Data.Event.League.ID == EmptyField {
+		return nil
+	}
+
+	queryInsertEventDetailMetadata :=
+		`INSERT INTO schedule.events_detail (ID, event_external_ref, tournament_external_ref, league_external_ref) 
+VALUES ($1, $2, $3, $4);`
+
+	_, err = l.storage.Exec(
+		context.Background(),
+		queryInsertEventDetailMetadata,
+		uuid.NewV4(),
+		eventDetail.Data.Event.ID,
+		eventDetail.Data.Event.Tournament.TournamentID,
+		eventDetail.Data.Event.League.ID)
+	if err != nil {
+		return errors.Wrapf(err, fmt.Sprintf("unable to store event with external reference = %s", eventDetail.Data.Event.ID))
+	}
+
+	queryInsertGameInfoMetadata :=
+		`INSERT INTO schedule.events_games (event_external_ref, game_external_ref, game_number, status, team_a_external_ref, team_b_external_ref, team_a_side, team_b_side) 
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`
+
+	for _, game := range eventDetail.Data.Event.Match.Games {
+		_, err = l.storage.Exec(
+			context.Background(),
+			queryInsertGameInfoMetadata,
+			eventDetail.Data.Event.ID,
+			game.ID,
+			game.Number,
+			game.State,
+			game.Teams[0].TeamID,
+			game.Teams[1].TeamID,
+			game.Teams[0].Side,
+			game.Teams[1].Side)
+		if err != nil {
+			return errors.Wrapf(err, fmt.Sprintf("unable to store game info with external reference = %s", game.ID))
+		}
+	}
 	return nil
 }
 

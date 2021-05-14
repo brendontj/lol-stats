@@ -80,20 +80,20 @@ func main() {
 		panic("Unable to get events from database")
 	}
 
-	//for _, eventID := range eventIDs {
-	//	wg.Add(1)
-	//	go func(eventID string) {
-	//		fmt.Printf("Inserting detailing of event: %v \n", eventID)
-	//		defer wg.Done()
-	//		err := app.lolService.PopulateDBWithEventDetail(eventID)
-	//		if err != nil {
-	//			panic(err.Error())
-	//		}
-	//	}(eventID)
-	//}
-	//wg.Wait()
-	//fmt.Println("Successfully inserted all details of events into database")
-	//
+	for _, eventID := range eventIDs {
+		wg.Add(1)
+		go func(eventID string) {
+			fmt.Printf("Inserting detailing of event: %v \n", eventID)
+			defer wg.Done()
+			err := app.lolService.PopulateDBWithEventDetail(eventID)
+			if err != nil {
+				panic(err.Error())
+			}
+		}(*eventID)
+	}
+	wg.Wait()
+	fmt.Println("Successfully inserted all details of events into database")
+
 	//gamesID, err := app.lolService.GetGames()
 	//if err != nil {
 	//	panic("Unable to get games from database")
