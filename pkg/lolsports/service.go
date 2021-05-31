@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
+	"time"
 )
 
 type Service interface {
@@ -14,7 +15,7 @@ type Service interface {
 	GetEventsExternalRef() ([]*string, error)
 	PopulateDBScheduleOfLeague(leagueExternalReference string) error
 	PopulateDBWithEventDetail(eventExternalReference string) error
-	GetGames() ([]Games,error)
+	GetGamesReference() ([]string,error)
 	PopulateDBWithGameData(gameID string) error
 }
 
@@ -264,10 +265,44 @@ where e.state = 'completed';
 	return eventIDs, nil
 }
 
-func (l *lolService) GetGames() ([]Games, error) {
-	panic("implement me")
+func (l *lolService) GetGamesReference() ([]string, error) {
+	queryGetAllGames := `
+SELECT 
+	game_external_ref
+FROM league.leagues;
+`
+	rows, err := l.storage.Query(context.Background(), queryGetAllGames)
+	if err != nil {
+		return nil, errors.Wrap(err,"unable to get games from storage")
+	}
+	defer rows.Close()
+
+	var gamesReference []string
+	for rows.Next() {
+		var g string
+		err = rows.Scan(&g)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to scan game reference with external reference = %s", g)
+		}
+		gamesReference = append(gamesReference, g)
+	}
+
+	return gamesReference, nil
 }
 
 func (l *lolService) PopulateDBWithGameData(gameID string) error {
-	panic("implement me")
+	timeOfBegin := time.Date(1950,1,1,0,0,0,0,time.UTC)
+	liveMatch, err := l.feedApiClient.GetDataFromLiveMatch(gameID, timeOfBegin)
+	if err != nil {
+		return errors.Wrapf(err, "unable to get data from live match, game reference = %s", gameID)
+	}
+
+	y, m, d := liveMatch.Frames[len(liveMatch.Frames)-1].Rfc460Timestamp.Date()
+	h, min, s := liveMatch.Frames[len(liveMatch.Frames)-1].Rfc460Timestamp.Clock()
+
+	if s % 10 != 0 {
+
+	}
+
+	timeOfBegin = time.Date(y, m, d, h, min, s, 0, time.UTC)
 }
