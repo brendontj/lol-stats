@@ -14,6 +14,8 @@ type Service interface {
 	GetEventsExternalRef() ([]*string, error)
 	PopulateDBScheduleOfLeague(leagueExternalReference string) error
 	PopulateDBWithEventDetail(eventExternalReference string) error
+	GetGames() ([]Games,error)
+	PopulateDBWithGameData(gameID string) error
 }
 
 type lolService struct {
@@ -260,4 +262,12 @@ where e.state = 'completed';
 	}
 
 	return eventIDs, nil
+}
+
+func (l *lolService) GetGames() ([]Games, error) {
+	panic("implement me")
+}
+
+func (l *lolService) PopulateDBWithGameData(gameID string) error {
+	panic("implement me")
 }
