@@ -291,18 +291,65 @@ FROM league.leagues;
 }
 
 func (l *lolService) PopulateDBWithGameData(gameID string) error {
+	firstFrame, err := l.getFirstFrameOfMatchGame(gameID)
+	if err != nil {
+		return err
+	}
+
+	y, m, d := firstFrame.Rfc460Timestamp.Date()
+	h, min, s := firstFrame.Rfc460Timestamp.Clock()
+
+	if s % 10 != 0 {
+		s = s + (s % 10)
+	}
+
+	currentTime := time.Date(y, m, d, h, min, s, 0, time.UTC)
+	for {
+		liveMatchData, err := l.feedApiClient.GetDataFromLiveMatch(gameID,currentTime)
+		if err != nil {
+			return err
+		}
+		//persist liveMatchData
+		detailsLiveMatch, err := l.feedApiClient.GetDetailsFromLiveMatch(gameID, currentTime)
+		if err != nil {
+			return err
+		}
+
+		//persist gameDetail
+		if detailsLiveMatch.Frames[0].GameState == "finished" {
+			break
+		}
+		currentTime.Add(time.Second * 30)
+	}
+	return nil
+}
+
+func (l *lolService) getFirstFrameOfMatchGame(gameID string) (*Frames, error) {
 	timeOfBegin := time.Date(1950,1,1,0,0,0,0,time.UTC)
 	liveMatch, err := l.feedApiClient.GetDataFromLiveMatch(gameID, timeOfBegin)
 	if err != nil {
-		return errors.Wrapf(err, "unable to get data from live match, game reference = %s", gameID)
+		return nil, errors.Wrapf(err, "unable to get data from live match, game reference = %s", gameID)
 	}
 
-	y, m, d := liveMatch.Frames[len(liveMatch.Frames)-1].Rfc460Timestamp.Date()
-	h, min, s := liveMatch.Frames[len(liveMatch.Frames)-1].Rfc460Timestamp.Clock()
+	for {
+		for _, f := range liveMatch.Frames {
+			if f.Participants[0].TotalGoldEarned != 0 {
+				return &f, nil
+			}
+		}
 
-	if s % 10 != 0 {
+		y, m, d := liveMatch.Frames[len(liveMatch.Frames)-1].Rfc460Timestamp.Date()
+		h, min, s := liveMatch.Frames[len(liveMatch.Frames)-1].Rfc460Timestamp.Clock()
 
+		if s % 10 != 0 {
+			s = s + (s % 10)
+		}
+
+		timeOfBegin = time.Date(y, m, d, h, min, s, 0, time.UTC)
+		liveMatch, err = l.feedApiClient.GetDataFromLiveMatch(gameID, timeOfBegin)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to get data from live match, game reference = %s", gameID)
+		}
 	}
 
-	timeOfBegin = time.Date(y, m, d, h, min, s, 0, time.UTC)
 }
