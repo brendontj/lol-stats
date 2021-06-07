@@ -45,6 +45,10 @@ func (l LolFeedClient) GetDataFromLiveMatch(gameID string, startingTime time.Tim
 		return nil, err
 	}
 
+	if res.StatusCode == http.StatusNoContent {
+		return nil, nil
+	}
+
 	liveMatch := new(LiveMatchData)
 
 	if err := json.NewDecoder(res.Body).Decode(&liveMatch); err != nil {
@@ -78,9 +82,12 @@ func (l LolFeedClient) GetDetailsFromLiveMatch(gameID string, startingTime time.
 		log.Printf("error sending HTTP request for get data from live match detail: gameID: %s, currentTime: %s, err: %v\n",gameID, startingTime.String(), err)
 		return nil, err
 	}
-
+	if res.StatusCode == http.StatusNoContent {
+		return nil, nil
+	}
+	
 	liveMatchDetail := new(LiveMatchDetailData)
-
+	
 	if err := json.NewDecoder(res.Body).Decode(&liveMatchDetail); err != nil {
 		log.Printf("error deserializing weather data\n")
 		return nil, err
