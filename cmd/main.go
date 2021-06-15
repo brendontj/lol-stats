@@ -100,17 +100,17 @@ func main() {
 	}
 
 	for _, game := range games {
-		wg.Add(1)
-		go func(gameRef string) {
-			fmt.Printf("Inserting game data of gameRef: %v \n", gameRef)
-			defer wg.Done()
-			err := app.lolService.PopulateDBWithGameData(gameRef)
+		//wg.Add(1)
+		//go func(gameRef string) {
+		//	fmt.Printf("Inserting game data of gameRef: %v \n", gameRef)
+		//	defer wg.Done()
+			err := app.lolService.PopulateDBWithGameData(game)
 			if err != nil {
-				panic(err.Error())
+				fmt.Println(err.Error())
 			}
-		}(game)
+		//}(game)
 	}
-	wg.Wait()
+	//wg.Wait()
 	fmt.Println("Successfully inserted game data of all games into database")
 
 	app.close()

@@ -24,7 +24,7 @@ func (l LolFeedClient) GetDataFromLiveMatch(gameID string, startingTime time.Tim
 	timeOfBegin := time.Date(1950,1,1,0,0,0,0,time.UTC)
 	currentTimestamp := ""
 	if startingTime.After(timeOfBegin) {
-		currentTimestamp = fmt.Sprint("?startingTime=", startingTime.String())
+		currentTimestamp = fmt.Sprint("?startingTime=", startingTime.Format("2006-01-02T15:04:05Z07:00"))
 	}
 	req, err := http.NewRequest(
 		http.MethodGet,
@@ -62,7 +62,7 @@ func (l LolFeedClient) GetDetailsFromLiveMatch(gameID string, startingTime time.
 	timeOfBegin := time.Date(1950,1,1,0,0,0,0,time.UTC)
 	currentTimestamp := ""
 	if startingTime.After(timeOfBegin) {
-		currentTimestamp = fmt.Sprint("?startingTime=", startingTime.String())
+		currentTimestamp = fmt.Sprint("?startingTime=", startingTime.Format("2006-01-02T15:04:05Z07:00"))
 	}
 	req, err := http.NewRequest(
 		http.MethodGet,

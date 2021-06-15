@@ -297,20 +297,15 @@ func (l *lolService) PopulateDBWithGameData(gameID string) error {
 		return err
 	}
 
-	if firstFrame == nil {
+	if firstFrame == nil || len(firstFrame.Participants) == 0  {
 		return nil
 	}
 
 	y, m, d := firstFrame.Rfc460Timestamp.Date()
 	h := firstFrame.Rfc460Timestamp.Hour()
 	min := firstFrame.Rfc460Timestamp.Minute()
-	s := firstFrame.Rfc460Timestamp.Second()
 
-	if s % 10 != 0 {
-		s = s + (s % 10)
-	}
-
-	startTime := time.Date(y, m, d, h, min, s, 0, time.UTC)
+	startTime := time.Date(y, m, d, h, min, 0, 0, time.UTC)
 
 	gameDetails, err := l.feedApiClient.GetDetailsFromLiveMatch(gameID, startTime)
 	if err != nil {
@@ -331,7 +326,7 @@ func (l *lolService) PopulateDBWithGameData(gameID string) error {
 			return err
 		}
 
-		if liveMatchData == nil {
+		if liveMatchData == nil || len(liveMatchData.Frames) == 0  {
 			return nil
 		}
 
@@ -350,10 +345,10 @@ func (l *lolService) PopulateDBWithGameData(gameID string) error {
 			return err
 		}
 
-		if detailsLiveMatch.Frames[0].GameState == "finished" || currentTime.After(startTime.Add(time.Hour * 1)){
+		if detailsLiveMatch.Frames[0].GameState == "finished" || currentTime.After(startTime.Add(time.Hour * 2)){
 			break
 		}
-		currentTime.Add(time.Minute * 5)
+		currentTime = currentTime.Add(time.Minute * 5)
 	}
 	return nil
 }
@@ -365,7 +360,7 @@ func (l *lolService) getFirstFrameOfMatchGame(gameID string) (*Frames, error) {
 		return nil, errors.Wrapf(err, "unable to get data from live match, game reference = %s", gameID)
 	}
 
-	if liveMatch == nil {
+	if liveMatch == nil || len(liveMatch.Frames) == 0 {
 		return nil, nil
 	}
 
@@ -378,17 +373,16 @@ func (l *lolService) getFirstFrameOfMatchGame(gameID string) (*Frames, error) {
 	y, m, d := liveMatch.Frames[len(liveMatch.Frames)-1].Rfc460Timestamp.Date()
 	h := liveMatch.Frames[len(liveMatch.Frames)-1].Rfc460Timestamp.Hour()
 	min := liveMatch.Frames[len(liveMatch.Frames)-1].Rfc460Timestamp.Minute()
-	s := liveMatch.Frames[len(liveMatch.Frames)-1].Rfc460Timestamp.Second()
 
-	if s % 10 != 0 {
-		s = s + (s % 10)
-	}
-
-	timeOfBegin = time.Date(y, m, d, h, min, s, 0, time.UTC)
+	timeOfBegin = time.Date(y, m, d, h, min, 0, 0, time.UTC)
 	for {
 		liveMatch, err = l.feedApiClient.GetDataFromLiveMatch(gameID, timeOfBegin)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unable to get data from live match, game reference = %s", gameID)
+		}
+
+		if liveMatch == nil || len(liveMatch.Frames) == 0{
+				return nil, nil
 		}
 
 		for _, f := range liveMatch.Frames {
@@ -397,7 +391,7 @@ func (l *lolService) getFirstFrameOfMatchGame(gameID string) (*Frames, error) {
 			}
 		}
 
-		timeOfBegin = timeOfBegin.Add(30 * time.Second)
+		timeOfBegin = timeOfBegin.Add(60 * time.Second)
 	}
 }
 
@@ -470,7 +464,7 @@ VALUES ($1, $2, $3, $4, $5, $6);`
 func (l *lolService) saveParticipantMetadata(gameID uuid.UUID, gameExternalID string, participantData Participants, currentTime time.Time) error {
 	queryInsertParticipantsStatsMetadata :=
 		`INSERT INTO game.participants_stats
-(gameID, game_externalID, participantID, game_timestamp, level, kills, deaths, assists, total_gold_earned, creep_score, kill_participant, champion_damage_share, wards_placed, wards_destroyed) 
+(gameID, game_externalID, participantID, game_timestamp, level, kills, deaths, assists, total_gold_earned, creep_score, kill_participation, champion_damage_share, wards_placed, wards_destroyed) 
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`
 
 	_, err := l.storage.Exec(
