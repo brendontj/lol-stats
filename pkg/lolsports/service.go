@@ -267,7 +267,7 @@ where e.state = 'completed';
 
 func (l *lolService) GetGamesReference() ([]string, error) {
 	queryGetAllGames := `
-SELECT 
+SELECT DISTINCT
 	game_external_ref
 FROM schedule.events_games
 WHERE status = 'completed';
@@ -345,7 +345,7 @@ func (l *lolService) PopulateDBWithGameData(gameID string) error {
 			return err
 		}
 
-		if detailsLiveMatch.Frames[0].GameState == "finished" || currentTime.After(startTime.Add(time.Hour * 2)){
+		if detailsLiveMatch.Frames[0].GameState == "finished" || currentTime.After(startTime.Add(time.Minute * 25)){
 			break
 		}
 		currentTime = currentTime.Add(time.Minute * 5)
