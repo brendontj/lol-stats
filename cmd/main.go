@@ -4,18 +4,17 @@ import (
 	"context"
 	"fmt"
 	"github.com/brendontj/lol-stats/pkg/lolsports"
+	"github.com/brendontj/lol-stats/pkg/lolsports/services"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"os"
-	"sync"
-
 	//"sync"
 )
 
 type application struct {
 	dbPool           *pgxpool.Pool
 	esportsApiClient lolsports.EsportsAPIScrapper
-	feedApiClient    lolsports.FeedAPIScrapper
-	lolService       lolsports.Service
+	feedApiClient lolsports.FeedAPIScrapper
+	lolService    services.Service
 }
 
 func (a *application) init() {
@@ -26,13 +25,13 @@ func (a *application) init() {
 	}
 
 	baseURI := "https://esports-api.lolesports.com/persisted/gw/" //Todo Add env vars
-	token := "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z" //Todo Add env vars
-	baseURIFeed := "https://feed.lolesports.com/livestats/v1/" //Todo Add env vars
+	token := "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z"           //Todo Add env vars
+	baseURIFeed := "https://feed.lolesports.com/livestats/v1/"    //Todo Add env vars
 
 	scrapperEsports := lolsports.NewLolStatsClient(baseURI, token)
-	scrapperFeed := lolsports.NewLolFeedClient(baseURIFeed,token)
+	scrapperFeed := lolsports.NewLolFeedClient(baseURIFeed, token)
 
-	a.lolService = lolsports.NewLolService(dbPool, scrapperEsports, scrapperFeed)
+	a.lolService = services.NewLolService(dbPool, scrapperEsports, scrapperFeed)
 
 	a.dbPool = dbPool
 	a.esportsApiClient = scrapperEsports
@@ -60,19 +59,20 @@ func main() {
 		panic("Unable to get leagues from database")
 	}
 
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
 	for _, league := range leagues {
-		wg.Add(1)
-		go func(leagueID string) {
-			fmt.Printf("Starting inserts of games from league: %v \n", leagueID)
-			defer wg.Done()
-			err := app.lolService.PopulateDBScheduleOfLeague(leagueID)
-			if err != nil {
-				panic(err.Error())
-			}
-		}(league.ID)
+		//	wg.Add(1)
+		//go func(leagueID string) {
+		fmt.Printf("Starting inserts of games from league: %v \n", league.ID)
+		//	defer wg.Done()
+		err := app.lolService.PopulateDBScheduleOfLeague(league.ID)
+		if err != nil {
+			panic(err.Error())
+		}
+		//}(league.ID)
 	}
-	wg.Wait()
+	//wg.Wait()
+
 	fmt.Println("Successfully inserted all events of schedule into database")
 
 	eventIDs, err := app.lolService.GetEventsExternalRef()
@@ -81,17 +81,17 @@ func main() {
 	}
 
 	for _, eventID := range eventIDs {
-		wg.Add(1)
-		go func(eventID string) {
-			fmt.Printf("Inserting detailing of event: %v \n", eventID)
-			defer wg.Done()
-			err := app.lolService.PopulateDBWithEventDetail(eventID)
-			if err != nil {
-				panic(err.Error())
-			}
-		}(*eventID)
+		//	wg.Add(1)
+		//go func(eventID string) {
+		fmt.Printf("Inserting detailing of event: %v \n", *eventID)
+		//	defer wg.Done()
+		err := app.lolService.PopulateDBWithEventDetail(*eventID)
+		if err != nil {
+			panic(err.Error())
+		}
+		//}(*eventID)
 	}
-	wg.Wait()
+	//wg.Wait()
 	fmt.Println("Successfully inserted all details of events into database")
 
 	games, err := app.lolService.GetGamesReference()
@@ -100,18 +100,24 @@ func main() {
 	}
 
 	for _, game := range games {
-		wg.Add(1)
-		go func(gameRef string) {
-			fmt.Printf("Inserting game data of gameRef: %v \n", gameRef)
-			defer wg.Done()
-			err := app.lolService.PopulateDBWithGameData(gameRef)
-			if err != nil {
-				fmt.Println(err.Error())
-			}
-		}(game)
+		//	wg.Add(1)
+		//go func(gameRef string) {
+		fmt.Printf("Inserting game data of gameRef: %v \n", game)
+		//	defer wg.Done()
+		err := app.lolService.PopulateDBWithGameData(game)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		//}(game)
 	}
-	wg.Wait()
+	//wg.Wait()
+
 	fmt.Println("Successfully inserted game data of all games into database")
+
+	if err := app.lolService.ExtractCSVForModelTraining(); err != nil {
+		panic("unable to extract csv for model training")
+	}
 
 	app.close()
 }

@@ -1,8 +1,9 @@
-package lolsports
+package services
 
 import (
 	"context"
 	"fmt"
+	"github.com/brendontj/lol-stats/pkg/lolsports"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -11,7 +12,7 @@ import (
 
 type Service interface {
 	PopulateLeagues() error
-	GetLeagues() ([]League,error)
+	GetLeagues() ([]lolsports.League,error)
 	GetEventsExternalRef() ([]*string, error)
 	PopulateDBScheduleOfLeague(leagueExternalReference string) error
 	PopulateDBWithEventDetail(eventExternalReference string) error
@@ -21,15 +22,17 @@ type Service interface {
 
 type lolService struct {
 	storage          *pgxpool.Pool
-	esportsApiClient EsportsAPIScrapper
-	feedApiClient    FeedAPIScrapper
+	esportsApiClient lolsports.EsportsAPIScrapper
+	feedApiClient    lolsports.FeedAPIScrapper
+	DB Storage
 }
 
-func NewLolService(pgStorage *pgxpool.Pool, esportsApiClient EsportsAPIScrapper, feedApiAclient FeedAPIScrapper) Service {
+func NewLolService(pgStorage *pgxpool.Pool, esportsApiClient lolsports.EsportsAPIScrapper, feedApiClient lolsports.FeedAPIScrapper) Service {
 	return &lolService{
 		storage:          pgStorage,
 		esportsApiClient: esportsApiClient,
-		feedApiClient:    feedApiAclient,
+		feedApiClient:    feedApiClient,
+		DB: Storage{pool: pgStorage},
 	}
 }
 
@@ -44,7 +47,16 @@ func (l *lolService) PopulateLeagues() error {
 VALUES ($1, $2, $3, $4, $5, $6, $7);`
 
 	for _, league := range leagueData.ScheduleContent.Leagues {
-		_, err := l.storage.Exec(
+		leagueWasPersisted, err := l.leagueWasPersisted(league.ID)
+		if err != nil {
+			return err
+		}
+
+		if leagueWasPersisted {
+			continue
+		}
+
+		_, err = l.storage.Exec(
 			context.Background(),
 			queryInsertLeagueMetadata,
 			uuid.NewV4(),
@@ -69,7 +81,23 @@ VALUES ($1, $2, $3, $4, $5, $6, $7);`
 	return nil
 }
 
-func (l *lolService) GetLeagues() ([]League,error) {
+func (l *lolService) leagueWasPersisted(id string) (bool, error) {
+	exists, err := l.DB.ExistsLeague(id)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (l *lolService) eventWasPersisted(id string) (bool, error) {
+	exists, err := l.DB.ExistsEvent(id)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (l *lolService) GetLeagues() ([]lolsports.League,error) {
 	queryGetAllLeagues := `
 SELECT 
 	external_reference,
@@ -86,9 +114,9 @@ FROM league.leagues;
 	}
 	defer rows.Close()
 
-	var leagues []League
+	var leagues []lolsports.League
 	for rows.Next() {
-		var l League
+		var l lolsports.League
 		err = rows.Scan(
 			&l.ID,
 			&l.Slug,
@@ -111,7 +139,7 @@ func (l *lolService) PopulateDBScheduleOfLeague(leagueExternalReference string) 
 		return errors.Wrap(err, "unable to populate with the most recent schedule")
 	}
 
-	if olderPage != EmptyField {
+	if olderPage != lolsports.EmptyField {
 		for {
 			scheduleData, err := l.esportsApiClient.GetSchedule("pt-BR", leagueExternalReference, olderPage)
 			if err != nil {
@@ -122,7 +150,7 @@ func (l *lolService) PopulateDBScheduleOfLeague(leagueExternalReference string) 
 				return err
 			}
 
-			if op == EmptyField {
+			if op == lolsports.EmptyField {
 				break
 			}
 			olderPage = op
@@ -138,7 +166,7 @@ func (l *lolService) PopulateDBWithEventDetail(eventExternalReference string) er
 		return errors.Wrapf(err, "unable to get event detail for event external reference: %v", eventExternalReference)
 	}
 
-	if eventDetail.Data.Event.ID == EmptyField || eventDetail.Data.Event.Tournament.TournamentID == EmptyField || eventDetail.Data.Event.League.ID == EmptyField {
+	if eventDetail.Data.Event.ID == lolsports.EmptyField || eventDetail.Data.Event.Tournament.TournamentID == lolsports.EmptyField || eventDetail.Data.Event.League.ID == lolsports.EmptyField {
 		return nil
 	}
 
@@ -181,9 +209,9 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`
 }
 
 func (l *lolService) populateWithMostRecentScheduleByLeague(leagueExternalReference string) (string, error) {
-	scheduleData, err := l.esportsApiClient.GetSchedule("pt-BR", leagueExternalReference, EmptyField)
+	scheduleData, err := l.esportsApiClient.GetSchedule("pt-BR", leagueExternalReference, lolsports.EmptyField)
 	if err != nil {
-		return EmptyField, errors.Wrap(err, "[service error] unable to get leagues")
+		return lolsports.EmptyField, errors.Wrap(err, "[service error] unable to get leagues")
 	}
 
 	s, err := l.saveScheduleContent(scheduleData.Data.Schedule)
@@ -193,17 +221,26 @@ func (l *lolService) populateWithMostRecentScheduleByLeague(leagueExternalRefere
 	return scheduleData.Data.Schedule.Pages.Older, nil
 }
 
-func (l *lolService) saveScheduleContent(scheduleContent Schedule) (string, error) {
+func (l *lolService) saveScheduleContent(scheduleContent lolsports.Schedule) (string, error) {
 	for _, event := range scheduleContent.Events {
-		err := l.saveEvent(event)
+		exists, err := l.eventWasPersisted(event.Match.ID)
 		if err != nil {
-			return EmptyField, err
+			return lolsports.EmptyField, err
+		}
+
+		if exists {
+			continue
+		}
+
+		err = l.saveEvent(event)
+		if err != nil {
+			return lolsports.EmptyField, err
 		}
 	}
 	return scheduleContent.Pages.Older, nil
 }
 
-func (l *lolService) saveEvent(event Events) error {
+func (l *lolService) saveEvent(event lolsports.Events) error {
 	queryInsertMatchMetadata :=
 		`INSERT INTO schedule.matches 
 (ID, external_reference, team_a_name, team_a_code, team_a_image, team_b_name, team_b_code, team_b_image, 
@@ -270,7 +307,7 @@ func (l *lolService) GetGamesReference() ([]string, error) {
 SELECT DISTINCT
 	game_external_ref
 FROM schedule.events_games
-WHERE status = 'completed';
+WHERE status = 'completed'
 `
 	rows, err := l.storage.Query(context.Background(), queryGetAllGames)
 	if err != nil {
@@ -353,7 +390,7 @@ func (l *lolService) PopulateDBWithGameData(gameID string) error {
 	return nil
 }
 
-func (l *lolService) getFirstFrameOfMatchGame(gameID string) (*Frames, error) {
+func (l *lolService) getFirstFrameOfMatchGame(gameID string) (*lolsports.Frames, error) {
 	timeOfBegin := time.Date(1950,1,1,0,0,0,0,time.UTC)
 	liveMatch, err := l.feedApiClient.GetDataFromLiveMatch(gameID, timeOfBegin)
 	if err != nil {
@@ -395,7 +432,7 @@ func (l *lolService) getFirstFrameOfMatchGame(gameID string) (*Frames, error) {
 	}
 }
 
-func (l *lolService) saveGame(gameDetail LiveMatchDetailData) (uuid.UUID, error) {
+func (l *lolService) saveGame(gameDetail lolsports.LiveMatchDetailData) (uuid.UUID, error) {
 	tx, err := l.storage.Begin(context.Background())
 	if err != nil {
 		return uuid.Nil, err
@@ -461,7 +498,7 @@ VALUES ($1, $2, $3, $4, $5, $6);`
 	return gameID, nil
 }
 
-func (l *lolService) saveParticipantMetadata(gameID uuid.UUID, gameExternalID string, participantData Participants, currentTime time.Time) error {
+func (l *lolService) saveParticipantMetadata(gameID uuid.UUID, gameExternalID string, participantData lolsports.Participants, currentTime time.Time) error {
 	queryInsertParticipantsStatsMetadata :=
 		`INSERT INTO game.participants_stats
 (gameID, game_externalID, participantID, game_timestamp, level, kills, deaths, assists, total_gold_earned, creep_score, kill_participation, champion_damage_share, wards_placed, wards_destroyed) 
@@ -490,7 +527,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`
 	return nil
 }
 
-func (l *lolService) saveGameMetadata(gameID uuid.UUID, liveGameDetail LiveMatchDetailData, currentTime time.Time) error {
+func (l *lolService) saveGameMetadata(gameID uuid.UUID, liveGameDetail lolsports.LiveMatchDetailData, currentTime time.Time) error {
 	queryInsertGameMetadata :=
 		`INSERT INTO game.games_stats
 (gameID, timestamp, gameState, blueTeamID, redTeamID, blue_team_total_gold, blue_team_inhibitors, blue_team_towers, blue_team_barons, blue_team_total_kills, blue_team_dragons, red_team_total_gold, red_team_inhibitors, red_team_towers, red_team_barons, red_team_total_kills, red_team_dragons) 
