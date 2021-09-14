@@ -33,6 +33,26 @@ func (s *Storage) ExistsEvent(id string) (bool, error) {
 	return exists, nil
 }
 
+func (s *Storage) ExistsEventExternalRef(gameReference string) (bool, error) {
+	query := `SELECT EXISTS(SELECT * FROM schedule.events_detail WHERE game_ref=$1)`
+	row := s.pool.QueryRow(context.Background(),query,gameReference)
+	var exists bool
+	if err := row.Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (s *Storage) ExistsGameID(gameID string) (bool, error) {
+	query := `SELECT EXISTS(SELECT * FROM game.games WHERE gameID=$1)`
+	row := s.pool.QueryRow(context.Background(),query,gameID)
+	var exists bool
+	if err := row.Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 func (s *Storage) InsertLeagues(leagueData *lolsports.LeagueData) error{
 		queryInsertLeagueMetadata :=
 	`INSERT INTO league.leagues (ID, external_reference, slug, name, region, image, priority)
@@ -108,15 +128,16 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
 	return nil
 }
 
-func (s *Storage) SaveEventDetail(eventDetail *lolsports.EventDetailData) error {
+func (s *Storage) SaveEventDetail(eventDetail *lolsports.EventDetailData, gameRef string) error {
 	queryInsertEventDetailMetadata :=
-		`INSERT INTO schedule.events_detail (ID, event_external_ref, tournament_external_ref, league_external_ref) 
-VALUES ($1, $2, $3, $4);`
+		`INSERT INTO schedule.events_detail (ID, game_ref, event_external_ref, tournament_external_ref, league_external_ref) 
+VALUES ($1, $2, $3, $4, $5);`
 
 	_, err := s.pool.Exec(
 		context.Background(),
 		queryInsertEventDetailMetadata,
 		uuid.NewV4(),
+		gameRef,
 		eventDetail.Data.Event.ID,
 		eventDetail.Data.Event.Tournament.TournamentID,
 		eventDetail.Data.Event.League.ID)

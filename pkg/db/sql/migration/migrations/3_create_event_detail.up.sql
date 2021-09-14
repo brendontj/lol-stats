@@ -1,5 +1,6 @@
 CREATE TABLE schedule.events_detail (
     id UUID PRIMARY KEY,
+    game_ref VARCHAR NOT NULL,
     event_external_ref  VARCHAR NOT NULL REFERENCES schedule.matches(external_reference),
     tournament_external_ref  VARCHAR NOT NULL,
     league_external_ref VARCHAR NOT NULL

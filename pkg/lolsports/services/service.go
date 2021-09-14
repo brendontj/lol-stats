@@ -77,6 +77,15 @@ func (l *lolService) PopulateDBScheduleOfLeague(leagueExternalReference string) 
 }
 
 func (l *lolService) PopulateDBWithEventDetail(eventExternalReference string) error {
+	exists, err := l.DB.ExistsEventExternalRef(eventExternalReference)
+	if err != nil {
+		return errors.Wrapf(err, "[service error] unable to verify if event was sync: %v", eventExternalReference)
+	}
+
+	if exists {
+		return nil
+	}
+
 	eventDetail, err := l.esportsApiClient.GetEventDetail("pt-BR", eventExternalReference)
 	if err != nil {
 		return errors.Wrapf(err, "[service error] unable to get event detail for event external reference: %v", eventExternalReference)
@@ -86,7 +95,7 @@ func (l *lolService) PopulateDBWithEventDetail(eventExternalReference string) er
 		return nil
 	}
 
-	if err := l.DB.SaveEventDetail(eventDetail); err != nil {
+	if err := l.DB.SaveEventDetail(eventDetail, eventExternalReference); err != nil {
 		return errors.Wrapf(err, "[service error] unable to save event detail for event with external reference: %v", eventExternalReference)
 	}
 
@@ -181,6 +190,15 @@ WHERE status = 'completed'
 }
 
 func (l *lolService) PopulateDBWithGameData(gameID string) error {
+	exists, err := l.DB.ExistsGameID(gameID)
+	if err != nil {
+		return errors.Wrapf(err, "[Service error] unable to verify if gameID was registered: %v", gameID)
+	}
+
+	if exists {
+		return nil
+	}
+
 	firstFrame, err := l.getFirstFrameOfMatchGame(gameID)
 	if err != nil {
 		return err
