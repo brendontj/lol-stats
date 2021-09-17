@@ -22,13 +22,23 @@ func initRoutes() {
 		token := "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z"           //Todo Add env vars
 		baseURIFeed := "https://feed.lolesports.com/livestats/v1/"    //Todo Add env vars
 
-		application := app.NewApplication(baseURI, token, baseURIFeed)
+		application := app.NewLolSportsClient(baseURI, token, baseURIFeed)
 		application.Start()
 		application.PopulateHistoricalData()
 		application.Close()
 
 		c.Data(http.StatusOK, "text/html", []byte("synced"))
 	})
+
+	router.GET("/transform_data", func(c *gin.Context) {
+		application := app.NewDataWorker()
+		application.Start()
+		application.TransformData()
+		application.Close()
+
+		c.Data(http.StatusOK, "text/html", []byte("data transformed"))
+	})
+
 
 	if err := router.Run(); err != nil {
 		panic(err)

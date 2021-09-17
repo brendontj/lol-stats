@@ -78,4 +78,15 @@ FROM game.participants_stats ps
         and gs.timestamp = ps.game_timestamp
         and ps.game_externalid = eg.game_external_ref
         and pi.participantid = ps.participantid
-order by game_external_ref, game_number, game_timestamp, pi.participantid
+order by game_external_ref, game_number, game_timestamp, pi.participantid;
+
+
+SELECT DISTINCT * FROM schedule.matches m
+    LEFT JOIN  schedule.events_games eg
+        ON eg.event_external_ref = m.external_reference
+    LEFT JOIN game.games g
+        ON g.gameid = eg.game_external_ref
+    LEFT JOIN game.games_stats gs
+        ON gs.gameid = g.id
+    WHERE eg.status = 'completed'
+order by game_external_ref,game_number,  event_start_time DESC;

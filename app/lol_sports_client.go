@@ -10,21 +10,21 @@ import (
 	"sync"
 )
 
-type Application interface {
+type LolSportsClient interface {
 	Start()
 	PopulateHistoricalData()
 	Close()
 }
 
-type application struct {
+type lolSportsClient struct {
 	LolService    services.Service
 	dbPool           *pgxpool.Pool
 	esportsApiClient lolsports.EsportsAPIScrapper
 	feedApiClient lolsports.FeedAPIScrapper
 }
 
-func NewApplication(baseURI, token, baseURIFeed string) Application {
-	return &application{
+func NewLolSportsClient(baseURI, token, baseURIFeed string) LolSportsClient {
+	return &lolSportsClient{
 		LolService:       nil,
 		dbPool:           nil,
 		esportsApiClient: lolsports.NewLolStatsClient(baseURI, token),
@@ -32,7 +32,7 @@ func NewApplication(baseURI, token, baseURIFeed string) Application {
 	}
 }
 
-func (a *application) Start() {
+func (a *lolSportsClient) Start() {
 	dbPool, err := pgxpool.Connect(context.Background(), "postgres://postgres:postgres@localhost:5432/lolstats?sslmode=disable&timezone=UTC") //Todo Add env vars
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error initializating the application: unable to connect to database: %v\n", err)
@@ -43,7 +43,7 @@ func (a *application) Start() {
 	a.dbPool = dbPool
 }
 
-func (a *application) PopulateHistoricalData() {
+func (a *lolSportsClient) PopulateHistoricalData() {
 	err := a.LolService.PopulateLeagues()
 	if err != nil {
 		panic(err.Error())
@@ -111,7 +111,7 @@ func (a *application) PopulateHistoricalData() {
 	fmt.Println("[Main process]: Successfully inserted game data of all games into database")
 }
 
-func (a *application) Close() {
+func (a *lolSportsClient) Close() {
 	a.feedApiClient.Close()
 	a.esportsApiClient.Close()
 	a.dbPool.Close()
