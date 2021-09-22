@@ -1,4 +1,5 @@
 SELECT DISTINCT
+                g.id as game_id,
                 g.gameid as game_external_ref,
                 matchid as match_external_ref,
                 patch_version as patch_version,
@@ -79,13 +80,13 @@ FROM game.participants_stats ps
         and pi.participantid = ps.participantid
 order by game_external_ref, game_number, game_timestamp, pi.participantid;
 
-
-SELECT DISTINCT * FROM schedule.matches m
-    LEFT JOIN  schedule.events_games eg
-        ON eg.event_external_ref = m.external_reference
-    LEFT JOIN game.games g
-        ON g.gameid = eg.game_external_ref
-    LEFT JOIN game.games_stats gs
-        ON gs.gameid = g.id
-    WHERE eg.status = 'completed'
-order by game_external_ref,game_number,  event_start_time DESC;
+--
+-- SELECT DISTINCT * FROM schedule.matches m
+--     LEFT JOIN  schedule.events_games eg
+--         ON eg.event_external_ref = m.external_reference
+--     LEFT JOIN game.games g
+--         ON g.gameid = eg.game_external_ref
+--     LEFT JOIN game.games_stats gs
+--         ON gs.gameid = g.id
+--     WHERE eg.status = 'completed'
+-- order by game_external_ref,game_number,  event_start_time DESC;
