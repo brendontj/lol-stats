@@ -30,10 +30,11 @@ func initRoutes() {
 		c.Data(http.StatusOK, "text/html", []byte("synced"))
 	})
 
-	router.GET("/transform_data", func(c *gin.Context) {
+	router.GET("/transform", func(c *gin.Context) {
 		application := app.NewDataWorker()
 		application.Start()
-		application.TransformData()
+		//application.TransformData()
+		application.ExtractData()
 		application.Close()
 
 		c.Data(http.StatusOK, "text/html", []byte("data transformed"))
