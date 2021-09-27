@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"github.com/brendontj/lol-stats/pkg/lolsports"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
@@ -17,6 +18,7 @@ type Service interface {
 	PopulateDBWithEventDetail(eventExternalReference string) error
 	GetGamesReference() ([]string,error)
 	PopulateDBWithGameData(gameID string) error
+	GetLiveGames() (*lolsports.EventsLiveData, error)
 }
 
 type lolService struct {
@@ -427,4 +429,12 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
 		return  err
 	}
 	return nil
+}
+
+func (l *lolService) GetLiveGames() (*lolsports.EventsLiveData, error) {
+	data, err := l.esportsApiClient.GetEventsLive("pt-BR")
+	if err != nil {
+		return nil, fmt.Errorf("[SERVICE ERROR] unable to get live games, err: %v", err)
+	}
+	return data, nil
 }

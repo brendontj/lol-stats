@@ -6,6 +6,7 @@ import (
 	"github.com/brendontj/lol-stats/pkg/lolsports"
 	"github.com/brendontj/lol-stats/pkg/lolsports/services"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"log"
 	"os"
 	"sync"
 )
@@ -13,6 +14,7 @@ import (
 type LolSportsClient interface {
 	Start()
 	PopulateHistoricalData()
+	GetLiveGames() lolsports.EventsLiveData
 	Close()
 }
 
@@ -21,6 +23,7 @@ type lolSportsClient struct {
 	dbPool           *pgxpool.Pool
 	esportsApiClient lolsports.EsportsAPIScrapper
 	feedApiClient lolsports.FeedAPIScrapper
+	*log.Logger
 }
 
 func NewLolSportsClient(baseURI, token, baseURIFeed string) LolSportsClient {
@@ -41,6 +44,16 @@ func (a *lolSportsClient) Start() {
 
 	a.LolService = services.NewLolService(dbPool, a.esportsApiClient, a.feedApiClient)
 	a.dbPool = dbPool
+	a.Logger = log.Default()
+}
+
+func (a *lolSportsClient) GetLiveGames() lolsports.EventsLiveData {
+	liveGames, err := a.LolService.GetLiveGames()
+	if err != nil {
+		log.Println(fmt.Sprintf("Unable to get live games, cause : %v", err))
+		return lolsports.EventsLiveData{}
+	}
+	return *liveGames
 }
 
 func (a *lolSportsClient) PopulateHistoricalData() {
