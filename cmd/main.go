@@ -103,15 +103,10 @@ func handleLiveGames(wg *sync.WaitGroup) {
 							if resp.StatusCode != http.StatusOK {
 								fmt.Println(fmt.Sprintf("Error sending ID (%v)", lg.ID))
 							}
-
-							if gameMoment == 5 {
-								delete(runningEvents, lg.ID)
-							}
 						}(runningEvents, lg, i)
 					}
 				}
 			}
 		}
-		time.Sleep(1 * time.Minute)
 	}
 }
