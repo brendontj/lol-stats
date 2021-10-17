@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"sync"
+	"time"
 )
 
 func main() {
@@ -75,22 +76,24 @@ func handleLiveGames(wg *sync.WaitGroup) {
 
 					go func(m map[string]bool, lg lolsports.Events) {
 						type DataToBeSent struct {
-							id string
-							team_a_wins int
-							team_a_losses int
-							team_b_wins int
-							team_b_losses int
+							ID          string `json:"id"`
+							TeamAWins   int `json:"team_a_wins"`
+							TeamALosses   int `json:"team_a_losses"`
+							TeamBWins   int `json:"team_b_wins"`
+							TeamBLosses int `json:"team_b_losses"`
 						}
-
-						data, _ := json.Marshal(DataToBeSent{
-							id: lg.ID,
-							team_a_wins: lg.Match.Teams[0].Record.Wins,
-							team_a_losses: lg.Match.Teams[1].Record.Losses,
-							team_b_wins: lg.Match.Teams[1].Record.Wins,
-							team_b_losses: lg.Match.Teams[1].Record.Losses,
-						})
-
-						resp, err := http.Post("localhost:8070/send_event_id", "application/json", bytes.NewBuffer(data))
+						dataToBeSent := DataToBeSent{
+							ID:          lg.ID,
+							TeamAWins:   lg.Match.Teams[0].Record.Wins,
+							TeamALosses: lg.Match.Teams[0].Record.Losses,
+							TeamBWins:   lg.Match.Teams[1].Record.Wins,
+							TeamBLosses: lg.Match.Teams[1].Record.Losses,
+						}
+						data, err := json.Marshal(dataToBeSent)
+						if err != nil {
+							panic(err)
+						}
+						resp, err := http.Post("http://localhost:8070/send_event_id/", "application/json", bytes.NewBuffer(data))
 						if err != nil {
 							panic(err)
 						}
@@ -102,5 +105,6 @@ func handleLiveGames(wg *sync.WaitGroup) {
 				}
 			}
 		}
+		time.Sleep(1 * time.Minute)
 	}
 }
