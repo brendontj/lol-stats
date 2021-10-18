@@ -70,40 +70,69 @@ func handleLiveGames(wg *sync.WaitGroup) {
 		liveGames := application.GetLiveGames()
 		for _, lg := range liveGames.Data.Schedule.Events {
 			if lg.State == "inProgress" {
-				_, ok := runningEvents[lg.ID]
-				if !ok {
-					runningEvents[lg.ID] = true
-					for i := 0; i < 6; i++ {
-						go func(m map[string]bool, lg lolsports.Events, gameMoment int) {
-							time.Sleep(time.Duration(gameMoment * 5) * time.Minute)
-							type DataToBeSent struct {
-								ID          string `json:"id"`
-								TeamAWins   int `json:"team_a_wins"`
-								TeamALosses int `json:"team_a_losses"`
-								TeamBWins   int `json:"team_b_wins"`
-								TeamBLosses int `json:"team_b_losses"`
-								GameMoment  int `json:"game_moment"`
+				for _, g := range lg.Match.Games {
+					if g.State == "inProgress" {
+						_, ok := runningEvents[g.ID]
+						if !ok {
+							runningEvents[g.ID] = true
+							for {
+								currentGameData := application.GetCurrentLiveGame(g.ID)
+								if currentGameData != nil {
+									if len(currentGameData.Frames) > 0 && len(currentGameData.Frames[0].Participants) > 0{
+										if currentGameData.Frames[0].Participants[0].TotalGoldEarned > 0 {
+											break
+										}
+									}
+								}
+								time.Sleep(5 * time.Second)
 							}
-							dataToBeSent := DataToBeSent{
-								ID:          lg.ID,
-								TeamAWins:   lg.Match.Teams[0].Record.Wins,
-								TeamALosses: lg.Match.Teams[0].Record.Losses,
-								TeamBWins:   lg.Match.Teams[1].Record.Wins,
-								TeamBLosses: lg.Match.Teams[1].Record.Losses,
-								GameMoment: gameMoment,
+
+							for i := 0; i < 6; i++ {
+								go func(m map[string]bool, lg lolsports.Events, gameMoment int) {
+									time.Sleep(time.Duration(gameMoment*5) * time.Minute)
+									type DataToBeSent struct {
+										ID               string `json:"id"`
+										TeamAWins        int    `json:"team_a_wins"`
+										TeamALosses      int    `json:"team_a_losses"`
+										TeamBWins        int    `json:"team_b_wins"`
+										TeamBLosses      int    `json:"team_b_losses"`
+										GameMoment       int    `json:"game_moment"`
+										BlueSideTeamName string `json:"blue_side_team_name"`
+										RedSideTeamName  string `json:"red_side_team_name"`
+									}
+									blueTeamName := ""
+									redTeamName := ""
+									if lg.Match.Teams[0].Side == "blue" {
+										blueTeamName = lg.Match.Teams[0].Name
+										redTeamName = lg.Match.Teams[1].Name
+									} else {
+										blueTeamName = lg.Match.Teams[1].Name
+										redTeamName = lg.Match.Teams[0].Name
+									}
+									dataToBeSent := DataToBeSent{
+										ID:               lg.ID,
+										TeamAWins:        lg.Match.Teams[0].Record.Wins,
+										TeamALosses:      lg.Match.Teams[0].Record.Losses,
+										TeamBWins:        lg.Match.Teams[1].Record.Wins,
+										TeamBLosses:      lg.Match.Teams[1].Record.Losses,
+										GameMoment:       gameMoment,
+										BlueSideTeamName: blueTeamName,
+										RedSideTeamName:  redTeamName,
+									}
+									data, err := json.Marshal(dataToBeSent)
+									if err != nil {
+										panic(err)
+									}
+									resp, err := http.Post("http://localhost:8070/send_event_id/", "application/json", bytes.NewBuffer(data))
+									if err != nil {
+										panic(err)
+									}
+									if resp.StatusCode != http.StatusOK {
+										fmt.Println(fmt.Sprintf("Error sending ID (%v)", lg.ID))
+									}
+								}(runningEvents, lg, i)
 							}
-							data, err := json.Marshal(dataToBeSent)
-							if err != nil {
-								panic(err)
-							}
-							resp, err := http.Post("http://localhost:8070/send_event_id/", "application/json", bytes.NewBuffer(data))
-							if err != nil {
-								panic(err)
-							}
-							if resp.StatusCode != http.StatusOK {
-								fmt.Println(fmt.Sprintf("Error sending ID (%v)", lg.ID))
-							}
-						}(runningEvents, lg, i)
+						}
 					}
 				}
 			}

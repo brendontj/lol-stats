@@ -9,12 +9,14 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 )
 
 type LolSportsClient interface {
 	Start()
 	PopulateHistoricalData()
 	GetLiveGames() lolsports.EventsLiveData
+	GetCurrentLiveGame(gameID string) *lolsports.LiveMatchData
 	Close()
 }
 
@@ -122,6 +124,30 @@ func (a *lolSportsClient) PopulateHistoricalData() {
 	fmt.Println("[Main process]: Waiting for workers to finish")
 	wg.Wait()
 	fmt.Println("[Main process]: Successfully inserted game data of all games into database")
+}
+
+func (a *lolSportsClient) GetCurrentLiveGame(gameID string) *lolsports.LiveMatchData {
+	tn := time.Now()
+	tn = tn.UTC()
+
+	aux :=  tn.Second() % 10
+	var deltaSec int
+	if aux < 5 {
+		deltaSec = 60 + aux
+	} else {
+		deltaSec = 50 + aux
+	}
+	tn = tn.Add(time.Duration(-deltaSec) * time.Second)
+
+	liveGames, err := a.feedApiClient.GetDataFromLiveMatch(gameID, time.Date(tn.Year(), tn.Month(), tn.Day(), tn.Hour(), tn.Minute(), tn.Second(), 0, time.UTC ))
+	if err != nil {
+		log.Println(fmt.Sprintf("Unable to get live game data, cause : %v", err))
+		return nil
+	}
+	if len(liveGames.Frames) == 0 {
+		return nil
+	}
+	return liveGames
 }
 
 func (a *lolSportsClient) Close() {
