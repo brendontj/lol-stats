@@ -144,6 +144,9 @@ func (a *lolSportsClient) GetCurrentLiveGame(gameID string) *lolsports.LiveMatch
 		log.Println(fmt.Sprintf("Unable to get live game data, cause : %v", err))
 		return nil
 	}
+	if liveGames == nil {
+		return nil
+	}
 	if len(liveGames.Frames) == 0 {
 		return nil
 	}
