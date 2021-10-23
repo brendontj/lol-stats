@@ -21,10 +21,10 @@ type LolSportsClient interface {
 }
 
 type lolSportsClient struct {
-	LolService    services.Service
+	LolService       services.Service
 	dbPool           *pgxpool.Pool
 	esportsApiClient lolsports.EsportsAPIScrapper
-	feedApiClient lolsports.FeedAPIScrapper
+	feedApiClient    lolsports.FeedAPIScrapper
 	*log.Logger
 }
 
@@ -74,7 +74,7 @@ func (a *lolSportsClient) PopulateHistoricalData() {
 	for i, league := range leagues {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, leagueID string, i int) {
-			fmt.Printf("[Worker %v] Starting inserts of games from league: %v \n",i, leagueID)
+			fmt.Printf("[Worker %v] Starting inserts of games from league: %v \n", i, leagueID)
 			defer wg.Done()
 			err := a.LolService.PopulateDBScheduleOfLeague(leagueID)
 			if err != nil {
@@ -130,7 +130,7 @@ func (a *lolSportsClient) GetCurrentLiveGame(gameID string) *lolsports.LiveMatch
 	tn := time.Now()
 	tn = tn.UTC()
 
-	aux :=  tn.Second() % 10
+	aux := tn.Second() % 10
 	var deltaSec int
 	if aux < 5 {
 		deltaSec = 60 + aux
@@ -139,7 +139,7 @@ func (a *lolSportsClient) GetCurrentLiveGame(gameID string) *lolsports.LiveMatch
 	}
 	tn = tn.Add(time.Duration(-deltaSec) * time.Second)
 
-	liveGames, err := a.feedApiClient.GetDataFromLiveMatch(gameID, time.Date(tn.Year(), tn.Month(), tn.Day(), tn.Hour(), tn.Minute(), tn.Second(), 0, time.UTC ))
+	liveGames, err := a.feedApiClient.GetDataFromLiveMatch(gameID, time.Date(tn.Year(), tn.Month(), tn.Day(), tn.Hour(), tn.Minute(), tn.Second(), 0, time.UTC))
 	if err != nil {
 		log.Println(fmt.Sprintf("Unable to get live game data, cause : %v", err))
 		return nil
