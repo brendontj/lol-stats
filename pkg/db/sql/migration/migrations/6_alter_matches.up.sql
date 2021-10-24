@@ -1,4 +1,4 @@
-ALTER TABLE schedule.events_games
+ALTER TABLE schedule.matches
     ADD COLUMN team_a_5_form_ratio NUMERIC (4,3),
     ADD COLUMN team_a_3_form_ratio NUMERIC (4,3),
     ADD COLUMN team_b_5_form_ratio NUMERIC (4,3),
