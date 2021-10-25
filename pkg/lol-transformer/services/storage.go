@@ -161,20 +161,33 @@ func (s *Storage) UpdateMatchWithWinnerRatio(tx Transaction, gameID uuid.UUID, t
 	return nil
 }
 
-func (s *Storage) GetLastMatchResults(tx Transaction, teamName string, numberOfPastGames int, gameTime time.Time) ([]lol_transformer.MatchGameStats, error) {
+func (s *Storage) GetLastMatchStats(tx Transaction, teamName string, numberOfPastGames int, gameTime time.Time) ([]lol_transformer.MatchGameStats, error) {
 	queryGetLastMatchStats := `
 SELECT 
-	id,
+	m.id,
+	m.external_reference,
 	team_a_name,
 	team_b_name,
 	event_start_time
 FROM schedule.matches as m
-WHERE 
-	m.team_a_5_form_ratio = NULL
+INNER JOIN game.games g 
+	ON m.external_reference = g.matchid
+INNER JOIN games.games_stats gs
+	ON g.id = gs.gameid
+WHERE
+	(m.team_a_name = $1 OR m.team_b_name = $1)
 AND 
-	m.team_b_5_form_ratio = NULL
-ORDER BY
-	m.event_start_time ASC;
+	team_a_5_gold_total_mean_at15 is NULL
+AND 
+	team_a_3_gold_total_mean_at15 IS NULL 
+AND 
+	team_b_5_gold_total_mean_at15 IS NULL
+AND 
+	team_b_3_gold_total_mean_at15 IS NULL
+AND
+	m.game_time < $2
+ORDER BY m.game_time DESC
+LIMIT $3
 `
 	rows, err := s.pool.Query(context.Background(), queryGetAllMatchesWithoutProcessedData)
 	if err != nil {
