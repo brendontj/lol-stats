@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	lol_transformer "github.com/brendontj/lol-stats/pkg/lol-transformer"
 	"github.com/jackc/pgx/v4/pgxpool"
 	uuid "github.com/satori/go.uuid"
 	"time"
@@ -124,11 +125,47 @@ func (s *service) fillFormRatio(tx Transaction,gameID uuid.UUID, teamName string
 	return s.DB.UpdateMatchWithWinnerRatio(tx, gameID, teamOrder, ratio, numberOfPastGames)
 }
 
-func (s *service) fillPastStats(tx Transaction,gameID uuid.UUID, teamName string, numberOfPastGames int, gameMoment int, gameTime time.Time) error {
-	lastMatchStats, err := s.DB.GetLastMatchStats(tx, teamName, numberOfPastGames, gameTime)
+func (s *service) fillPastStats(tx Transaction,gameID uuid.UUID, teamName string, numberOfPastGames int, gameMoment int, gameTime time.Time, teamOrder string) error {
+	lastMatchStats, err := s.DB.GetLastMatchStats(teamName, numberOfPastGames, gameTime, gameMoment)
 	if err != nil {
 		return err
 	}
+
+	numberOfBaronsMean := 0
+	numberOfDragonsMean := 0
+	numberOfInhibitorsMean := 0
+	numberOfTotalGoldMean := 0
+	numberOfKillsMean := 0
+	numberOfTowersMean := 0
+
+	for _, lms := range lastMatchStats {
+		if lms.TeamAName == teamName {
+			numberOfBaronsMean += lms.TeamBlueTotalBarons
+			numberOfDragonsMean += len(lms.TeamBlueDragons)
+			numberOfInhibitorsMean += lms.TeamBlueTotalInhibitors
+			numberOfTotalGoldMean += lms.TeamBlueTotalGold
+			numberOfKillsMean += lms.TeamBlueTotalKills
+			numberOfTowersMean += lms.TeamBlueTotalTowers
+		} else if lms.TeamBName == teamName {
+			numberOfBaronsMean += lms.TeamRedTotalBarons
+			numberOfDragonsMean += len(lms.TeamRedDragons)
+			numberOfInhibitorsMean += lms.TeamRedTotalInhibitors
+			numberOfTotalGoldMean += lms.TeamRedTotalGold
+			numberOfKillsMean += lms.TeamRedTotalKills
+			numberOfTowersMean += lms.TeamRedTotalTowers
+		}
+	}
+
+	statsInfo := lol_transformer.StatsInfo{
+		NumberOfBaronsMean:     float64(numberOfBaronsMean)/float64(len(lastMatchStats)),
+		NumberOfDragonsMean:    float64(numberOfDragonsMean)/float64(len(lastMatchStats)),
+		NumberOfInhibitorsMean: float64(numberOfInhibitorsMean)/float64(len(lastMatchStats)),
+		NumberOfTotalGoldMean:  float64(numberOfTotalGoldMean)/float64(len(lastMatchStats)),
+		NumberOfKillsMean:      float64(numberOfKillsMean)/float64(len(lastMatchStats)),
+		NumberOfTowersMean:     float64(numberOfTowersMean)/float64(len(lastMatchStats)),
+	}
+
+	return s.DB.UpdateMatchWithPastStats(tx,gameID,teamOrder, statsInfo, numberOfPastGames, gameMoment)
 }
 
 func isMatchWinner(bestOf int, numberOfWins int) bool {
