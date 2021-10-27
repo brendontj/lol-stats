@@ -122,6 +122,7 @@ func (l *lolService) populateWithMostRecentScheduleByLeague(leagueExternalRefere
 
 func (l *lolService) saveScheduleContent(scheduleContent lolsports.Schedule) (string, error) {
 	for _, event := range scheduleContent.Events {
+		time.Sleep(20 * time.Microsecond)
 		exists, err := l.DB.ExistsEvent(event.Match.ID)
 		if err != nil {
 			return lolsports.EmptyField, err

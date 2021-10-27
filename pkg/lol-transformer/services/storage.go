@@ -32,9 +32,9 @@ SELECT
 	event_start_time
 FROM schedule.matches as m
 WHERE 
-	m.team_a_5_form_ratio = NULL
+	m.team_a_5_form_ratio is NULL
 AND 
-	m.team_b_5_form_ratio = NULL
+	m.team_b_5_form_ratio is NULL
 ORDER BY
 	m.event_start_time ASC;
 `
@@ -68,7 +68,7 @@ SELECT
 	team_b_name,
 	team_a_game_wins,
 	team_b_game_wins,
-	bestOf
+	best_of
 FROM schedule.matches as m
 WHERE 
 	(m.team_a_name = $1 OR m.team_b_name = $1)
@@ -168,7 +168,7 @@ SELECT
        m.external_reference,
        m.team_a_name,
        m.team_b_name,
-	   gs.blue_team_barons
+	   gs.blue_team_barons,
        gs.blue_team_dragons,
        gs.blue_team_inhibitors,
        gs.blue_team_total_gold,
@@ -196,7 +196,7 @@ WHERE
   AND
     m.team_b_3_gold_total_mean_at15 IS NULL
   AND 
-	m.game_time < $2
+	m.event_start_time < $2
 GROUP BY g.id,
          m.event_start_time,
          gs.timestamp,m.external_reference,
@@ -275,84 +275,84 @@ func (s *Storage) UpdateMatchWithPastStats(tx Transaction, gameID uuid.UUID, tea
 	queryUpdateStatsTeamALast3At15 :=
 		`UPDATE schedule.matches
 		 SET 
-			team_a_3_gold_total_mean_at15 = $2
-			team_a_3_kills_mean_at15 = $3
-			team_a_3_inhibitors_mean_at15 = $4
-			team_a_3_dragons_mean_at15 = $5
+			team_a_3_gold_total_mean_at15 = $2,
+			team_a_3_kills_mean_at15 = $3,
+			team_a_3_inhibitors_mean_at15 = $4,
+			team_a_3_dragons_mean_at15 = $5,
 			team_a_3_towers_mean_at15 = $6
 		WHERE id = $1;`
 
 	queryUpdateStatsTeamALast3At25 :=
 		`UPDATE schedule.matches
 		 SET 
-			team_a_3_gold_total_mean_at25 = $2
-			team_a_3_kills_mean_at25 = $3
-			team_a_3_inhibitors_mean_at25 = $4
-			team_a_3_dragons_mean_at25 = $5
-			team_a_3_towers_mean_at25 = $6
+			team_a_3_gold_total_mean_at25 = $2,
+			team_a_3_kills_mean_at25 = $3,
+			team_a_3_inhibitors_mean_at25 = $4,
+			team_a_3_dragons_mean_at25 = $5,
+			team_a_3_towers_mean_at25 = $6,
 			team_a_3_barons_mean_at25 = $7	
 		WHERE id = $1;`
 
 	queryUpdateStatsTeamALast5At15 :=
 		`UPDATE schedule.matches
 		 SET
-			team_a_5_gold_total_mean_at15 = $2
-			team_a_5_kills_mean_at15 = $3
-			team_a_5_inhibitors_mean_at15 = $4
-			team_a_5_dragons_mean_at15 = $5
+			team_a_5_gold_total_mean_at15 = $2,
+			team_a_5_kills_mean_at15 = $3,
+			team_a_5_inhibitors_mean_at15 = $4,
+			team_a_5_dragons_mean_at15 = $5,
 			team_a_5_towers_mean_at15 = $6
 		WHERE id = $1;`
 
 	queryUpdateStatsTeamALast5At25 :=
 		`UPDATE schedule.matches
 		 SET 
-			team_a_5_gold_total_mean_at25 = $2
-			team_a_5_kills_mean_at25 = $3
-			team_a_5_inhibitors_mean_at25 = $4
-			team_a_5_dragons_mean_at25 = $5
-			team_a_5_towers_mean_at25 = $6
+			team_a_5_gold_total_mean_at25 = $2,
+			team_a_5_kills_mean_at25 = $3,
+			team_a_5_inhibitors_mean_at25 = $4,
+			team_a_5_dragons_mean_at25 = $5,
+			team_a_5_towers_mean_at25 = $6,
 			team_a_5_barons_mean_at25 = $7	
 		WHERE id = $1;`
 
 	queryUpdateStatsTeamBLast3At15 :=
 		`UPDATE schedule.matches
 		 SET 
-			team_b_3_gold_total_mean_at15 = $2
-			team_b_3_kills_mean_at15 = $3
-			team_b_3_inhibitors_mean_at15 = $4
-			team_b_3_dragons_mean_at15 = $5
+			team_b_3_gold_total_mean_at15 = $2,
+			team_b_3_kills_mean_at15 = $3,
+			team_b_3_inhibitors_mean_at15 = $4,
+			team_b_3_dragons_mean_at15 = $5,
 			team_b_3_towers_mean_at15 = $6
 		WHERE id = $1;`
 
 	queryUpdateStatsTeamBLast3At25 :=
 		`UPDATE schedule.matches
 		 SET 
-			team_b_3_gold_total_mean_at25 = $2
-			team_b_3_kills_mean_at25 = $3
-			team_b_3_inhibitors_mean_at25 = $4
-			team_b_3_dragons_mean_at25 = $5
-			team_b_3_towers_mean_at25 = $6
+			team_b_3_gold_total_mean_at25 = $2,
+			team_b_3_kills_mean_at25 = $3,
+			team_b_3_inhibitors_mean_at25 = $4,
+			team_b_3_dragons_mean_at25 = $5,
+			team_b_3_towers_mean_at25 = $6,
 			team_b_3_barons_mean_at25 = $7	
 		WHERE id = $1;`
 
 	queryUpdateStatsTeamBLast5At15 :=
 		`UPDATE schedule.matches
 		 SET 
-			team_b_5_gold_total_mean_at15 = $2
-			team_b_5_kills_mean_at15 = $3
-			team_b_5_inhibitors_mean_at15 = $4
-			team_b_5_dragons_mean_at15 = $5
+			team_b_5_gold_total_mean_at15 = $2,
+			team_b_5_kills_mean_at15 = $3,
+			team_b_5_inhibitors_mean_at15 = $4,
+			team_b_5_dragons_mean_at15 = $5,
 			team_b_5_towers_mean_at15 = $6
 		WHERE id = $1;`
 
 	queryUpdateStatsTeamBLast5At25 :=
 		`UPDATE schedule.matches
 		 SET 
-			team_b_5_gold_total_mean_at25 = $2
-			team_b_5_kills_mean_at25 = $3
-			team_b_5_inhibitors_mean_at25 = $4
-			team_b_5_dragons_mean_at25 = $5
-			team_b_5_towers_mean_at25 = $6
+			team_b_5_gold_total_mean_at25 = $2,
+			team_b_5_kills_mean_at25 = $3,
+			team_b_5_inhibitors_mean_at25 = $4,
+			team_b_5_dragons_mean_at25 = $5,
+			team_b_5_towers_mean_at25 = $6,
 			team_b_5_barons_mean_at25 = $7	
 		WHERE id = $1;`
 

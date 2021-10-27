@@ -8,22 +8,19 @@ import (
 	"time"
 )
 
-type Service interface {
-}
-
-type service struct {
+type Service struct {
 	storage *pgxpool.Pool
 	DB      Storage
 }
 
-func NewLolService(pgStorage *pgxpool.Pool) Service {
-	return &service{
+func NewLolService(pgStorage *pgxpool.Pool) *Service {
+	return &Service{
 		storage: pgStorage,
 		DB:      Storage{pool: pgStorage},
 	}
 }
 
-func (s *service) FillPastGamesWithHistoricData() error {
+func (s *Service) FillPastGamesWithHistoricData() error {
 	matches, err := s.DB.GetAllMatchesWithoutProcessedData()
 	if err != nil {
 		return err
@@ -102,7 +99,7 @@ func (s *service) FillPastGamesWithHistoricData() error {
 	return nil
 }
 
-func (s *service) fillFormRatio(tx Transaction,gameID uuid.UUID, teamName string, numberOfPastGames int, gameTime time.Time, teamOrder string) error {
+func (s *Service) fillFormRatio(tx Transaction,gameID uuid.UUID, teamName string, numberOfPastGames int, gameTime time.Time, teamOrder string) error {
 	lastMatchResults, err := s.DB.GetLastMatchResults(tx, teamName, numberOfPastGames, gameTime)
 	if err != nil {
 		return err
@@ -125,7 +122,7 @@ func (s *service) fillFormRatio(tx Transaction,gameID uuid.UUID, teamName string
 	return s.DB.UpdateMatchWithWinnerRatio(tx, gameID, teamOrder, ratio, numberOfPastGames)
 }
 
-func (s *service) fillPastStats(tx Transaction,gameID uuid.UUID, teamName string, numberOfPastGames int, gameMoment int, gameTime time.Time, teamOrder string) error {
+func (s *Service) fillPastStats(tx Transaction,gameID uuid.UUID, teamName string, numberOfPastGames int, gameMoment int, gameTime time.Time, teamOrder string) error {
 	lastMatchStats, err := s.DB.GetLastMatchStats(teamName, numberOfPastGames, gameTime, gameMoment)
 	if err != nil {
 		return err

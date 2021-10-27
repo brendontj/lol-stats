@@ -16,14 +16,14 @@ type DataWorker interface {
 
 type dataWorker struct {
 	dbPool                *pgxpool.Pool
-	LolTransformerService services.Service
+	LolTransformerService *services.Service
 }
 
-func NewDataWorker() dataWorker {
-	return dataWorker{dbPool: nil, LolTransformerService: nil}
+func NewDataWorker() DataWorker {
+	return &dataWorker{dbPool: nil, LolTransformerService: nil}
 }
 
-func (d dataWorker) Start() {
+func (d *dataWorker) Start() {
 	dbPool, err := pgxpool.Connect(context.Background(), "postgres://postgres:postgres@localhost:5432/lolstats?sslmode=disable&timezone=UTC") //Todo Add env vars
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error initializating the application: unable to connect to database: %v\n", err)
@@ -34,10 +34,13 @@ func (d dataWorker) Start() {
 	d.dbPool = dbPool
 }
 
-func (d dataWorker) TransformData() {
-	panic("implement me")
+func (d *dataWorker) TransformData() {
+	if err := d.LolTransformerService.FillPastGamesWithHistoricData(); err != nil {
+		fmt.Println(err)
+	}
+	return
 }
 
-func (d dataWorker) Close() {
+func (d *dataWorker) Close() {
 	d.dbPool.Close()
 }

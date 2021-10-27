@@ -42,4 +42,8 @@ ALTER TABLE schedule.matches
     DROP COLUMN team_a_5_inhibitors_mean_at25,
     DROP COLUMN team_a_3_inhibitors_mean_at25,
     DROP COLUMN team_b_5_inhibitors_mean_at25,
-    DROP COLUMN team_b_3_inhibitors_mean_at25;
+    DROP COLUMN team_b_3_inhibitors_mean_at25,
+    DROP COLUMN team_a_5_inhibitors_mean_at15,
+    DROP COLUMN team_a_3_inhibitors_mean_at15,
+    DROP COLUMN team_b_5_inhibitors_mean_at15,
+    DROP COLUMN team_b_3_inhibitors_mean_at15;
