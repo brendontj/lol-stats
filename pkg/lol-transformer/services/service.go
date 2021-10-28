@@ -105,19 +105,25 @@ func (s *Service) fillFormRatio(tx Transaction,gameID uuid.UUID, teamName string
 		return err
 	}
 
-	numberOfWins := 0
-	for _, lmr := range lastMatchResults {
-		if lmr.TeamAName == teamName {
-			if isMatchWinner(lmr.BestOf, lmr.TeamAGameWins) {
-				numberOfWins += 1
-			}
-		} else if lmr.TeamBName == teamName {
-			if isMatchWinner(lmr.BestOf, lmr.TeamBGameWins) {
-				numberOfWins += 1
+
+	var ratio float64
+	if len(lastMatchResults) > 0 {
+		numberOfWins := 0
+		for _, lmr := range lastMatchResults {
+			if lmr.TeamAName == teamName {
+				if isMatchWinner(lmr.BestOf, lmr.TeamAGameWins) {
+					numberOfWins += 1
+				}
+			} else if lmr.TeamBName == teamName {
+				if isMatchWinner(lmr.BestOf, lmr.TeamBGameWins) {
+					numberOfWins += 1
+				}
 			}
 		}
+		ratio = float64(numberOfWins) / float64(len(lastMatchResults))
+	} else {
+		ratio = 0.0
 	}
-	ratio := float64(numberOfWins) / float64(len(lastMatchResults))
 
 	return s.DB.UpdateMatchWithWinnerRatio(tx, gameID, teamOrder, ratio, numberOfPastGames)
 }
@@ -127,40 +133,52 @@ func (s *Service) fillPastStats(tx Transaction,gameID uuid.UUID, teamName string
 	if err != nil {
 		return err
 	}
+	var statsInfo lol_transformer.StatsInfo
+	if len(lastMatchStats) > 0 {
+		numberOfBaronsMean := 0
+		numberOfDragonsMean := 0
+		numberOfInhibitorsMean := 0
+		numberOfTotalGoldMean := 0
+		numberOfKillsMean := 0
+		numberOfTowersMean := 0
 
-	numberOfBaronsMean := 0
-	numberOfDragonsMean := 0
-	numberOfInhibitorsMean := 0
-	numberOfTotalGoldMean := 0
-	numberOfKillsMean := 0
-	numberOfTowersMean := 0
+		for _, lms := range lastMatchStats {
+			if lms.TeamAName == teamName {
+				numberOfBaronsMean += lms.TeamBlueTotalBarons
+				numberOfDragonsMean += len(lms.TeamBlueDragons)
+				numberOfInhibitorsMean += lms.TeamBlueTotalInhibitors
+				numberOfTotalGoldMean += lms.TeamBlueTotalGold
+				numberOfKillsMean += lms.TeamBlueTotalKills
+				numberOfTowersMean += lms.TeamBlueTotalTowers
+			} else if lms.TeamBName == teamName {
+				numberOfBaronsMean += lms.TeamRedTotalBarons
+				numberOfDragonsMean += len(lms.TeamRedDragons)
+				numberOfInhibitorsMean += lms.TeamRedTotalInhibitors
+				numberOfTotalGoldMean += lms.TeamRedTotalGold
+				numberOfKillsMean += lms.TeamRedTotalKills
+				numberOfTowersMean += lms.TeamRedTotalTowers
+			}
+		}
 
-	for _, lms := range lastMatchStats {
-		if lms.TeamAName == teamName {
-			numberOfBaronsMean += lms.TeamBlueTotalBarons
-			numberOfDragonsMean += len(lms.TeamBlueDragons)
-			numberOfInhibitorsMean += lms.TeamBlueTotalInhibitors
-			numberOfTotalGoldMean += lms.TeamBlueTotalGold
-			numberOfKillsMean += lms.TeamBlueTotalKills
-			numberOfTowersMean += lms.TeamBlueTotalTowers
-		} else if lms.TeamBName == teamName {
-			numberOfBaronsMean += lms.TeamRedTotalBarons
-			numberOfDragonsMean += len(lms.TeamRedDragons)
-			numberOfInhibitorsMean += lms.TeamRedTotalInhibitors
-			numberOfTotalGoldMean += lms.TeamRedTotalGold
-			numberOfKillsMean += lms.TeamRedTotalKills
-			numberOfTowersMean += lms.TeamRedTotalTowers
+		statsInfo = lol_transformer.StatsInfo{
+			NumberOfBaronsMean:     float64(numberOfBaronsMean)/float64(len(lastMatchStats)),
+			NumberOfDragonsMean:    float64(numberOfDragonsMean)/float64(len(lastMatchStats)),
+			NumberOfInhibitorsMean: float64(numberOfInhibitorsMean)/float64(len(lastMatchStats)),
+			NumberOfTotalGoldMean:  float64(numberOfTotalGoldMean)/float64(len(lastMatchStats)),
+			NumberOfKillsMean:      float64(numberOfKillsMean)/float64(len(lastMatchStats)),
+			NumberOfTowersMean:     float64(numberOfTowersMean)/float64(len(lastMatchStats)),
+		}
+	} else {
+		statsInfo = lol_transformer.StatsInfo{
+			NumberOfBaronsMean:     0.0,
+			NumberOfDragonsMean:    0.0,
+			NumberOfInhibitorsMean: 0.0,
+			NumberOfTotalGoldMean:  0.0,
+			NumberOfKillsMean:      0.0,
+			NumberOfTowersMean:     0.0,
 		}
 	}
 
-	statsInfo := lol_transformer.StatsInfo{
-		NumberOfBaronsMean:     float64(numberOfBaronsMean)/float64(len(lastMatchStats)),
-		NumberOfDragonsMean:    float64(numberOfDragonsMean)/float64(len(lastMatchStats)),
-		NumberOfInhibitorsMean: float64(numberOfInhibitorsMean)/float64(len(lastMatchStats)),
-		NumberOfTotalGoldMean:  float64(numberOfTotalGoldMean)/float64(len(lastMatchStats)),
-		NumberOfKillsMean:      float64(numberOfKillsMean)/float64(len(lastMatchStats)),
-		NumberOfTowersMean:     float64(numberOfTowersMean)/float64(len(lastMatchStats)),
-	}
 
 	return s.DB.UpdateMatchWithPastStats(tx,gameID,teamOrder, statsInfo, numberOfPastGames, gameMoment)
 }
