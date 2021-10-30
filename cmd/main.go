@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/brendontj/lol-stats/app"
 	"github.com/brendontj/lol-stats/pkg/lolsports"
+	"github.com/brendontj/lol-stats/util"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"sync"
@@ -30,9 +31,9 @@ func initRoutes(wg *sync.WaitGroup) {
 	})
 
 	router.GET("/sync_data", func(c *gin.Context) {
-		baseURI := "https://esports-api.lolesports.com/persisted/gw/" //Todo Add env vars
-		token := "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z"           //Todo Add env vars
-		baseURIFeed := "https://feed.lolesports.com/livestats/v1/"    //Todo Add env vars
+		baseURI := util.GetEnvVariable("BASE_URI")
+		token := util.GetEnvVariable("API_TOKEN")
+		baseURIFeed := util.GetEnvVariable("BASE_URI_FEED")
 
 		application := app.NewLolSportsClient(baseURI, token, baseURIFeed)
 		application.Start()
@@ -59,9 +60,9 @@ func initRoutes(wg *sync.WaitGroup) {
 
 func handleLiveGames(wg *sync.WaitGroup) {
 	defer wg.Done()
-	baseURI := "https://esports-api.lolesports.com/persisted/gw/" //Todo Add env vars
-	token := "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z"           //Todo Add env vars
-	baseURIFeed := "https://feed.lolesports.com/livestats/v1/"    //Todo Add env vars
+	baseURI := util.GetEnvVariable("BASE_URI")
+	token := util.GetEnvVariable("API_TOKEN")
+	baseURIFeed := util.GetEnvVariable("BASE_URI_FEED")
 
 	application := app.NewLolSportsClient(baseURI, token, baseURIFeed)
 	application.Start()
@@ -84,7 +85,7 @@ func handleLiveGames(wg *sync.WaitGroup) {
 										}
 									}
 								}
-								time.Sleep(10 * time.Second)
+								time.Sleep(15 * time.Second)
 							}
 
 							for i := 0; i < 6; i++ {
@@ -123,7 +124,7 @@ func handleLiveGames(wg *sync.WaitGroup) {
 									if err != nil {
 										panic(err)
 									}
-									resp, err := http.Post("http://localhost:8070/send_event_id/", "application/json", bytes.NewBuffer(data))
+									resp, err := http.Post(util.GetEnvVariable("CONSUMER_API_ENDPOINT"), "application/json", bytes.NewBuffer(data))
 									if err != nil {
 										panic(err)
 									}
