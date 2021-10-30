@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/brendontj/lol-stats/pkg/lolsports"
 	"github.com/brendontj/lol-stats/pkg/lolsports/services"
+	"github.com/brendontj/lol-stats/util"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"os"
@@ -38,7 +39,13 @@ func NewLolSportsClient(baseURI, token, baseURIFeed string) LolSportsClient {
 }
 
 func (a *lolSportsClient) Start() {
-	dbPool, err := pgxpool.Connect(context.Background(), "postgres://postgres:postgres@localhost:5432/lolstats?sslmode=disable&timezone=UTC") //Todo Add env vars
+	host := util.GetEnvVariable("HOST")
+	port := util.GetEnvVariable("PORT")
+	database := util.GetEnvVariable("DATABASE")
+	dbUser := util.GetEnvVariable("DB_USER")
+	dbPassword := util.GetEnvVariable("DB_PASSWORD")
+
+	dbPool, err := pgxpool.Connect(context.Background(), fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&timezone=UTC", dbUser, dbPassword, host, port, database))
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error initializating the application: unable to connect to database: %v\n", err)
 		os.Exit(1)
