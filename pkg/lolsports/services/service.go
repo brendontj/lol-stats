@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	lol_transformer "github.com/brendontj/lol-stats/pkg/lol-transformer"
+	"github.com/brendontj/lol-stats/pkg/lol-transformer/services"
 	"github.com/brendontj/lol-stats/pkg/lolsports"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
@@ -13,21 +14,21 @@ import (
 
 type Service interface {
 	PopulateLeagues() error
-	GetLeagues() ([]lolsports.League,error)
+	GetLeagues() ([]lolsports.League, error)
 	GetEventsExternalRef() ([]*string, error)
 	PopulateDBScheduleOfLeague(leagueExternalReference string) error
 	PopulateDBWithEventDetail(eventExternalReference string) error
-	GetGamesReference() ([]string,error)
+	GetGamesReference() ([]string, error)
 	PopulateDBWithGameData(gameID string) error
 	GetLiveGames() (*lolsports.EventsLiveData, error)
-	GetTeamsHistoricalData(redTeamName, blueTeamName string) (lolsports.HistoricalData, error)
+	GetTeamsHistoricalData(redTeamName, blueTeamName string) (*lolsports.HistoricalData, error)
 }
 
 type lolService struct {
 	storage          *pgxpool.Pool
 	esportsApiClient lolsports.EsportsAPIScrapper
 	feedApiClient    lolsports.FeedAPIScrapper
-	DB Storage
+	DB               Storage
 }
 
 func NewLolService(pgStorage *pgxpool.Pool, esportsApiClient lolsports.EsportsAPIScrapper, feedApiClient lolsports.FeedAPIScrapper) Service {
@@ -35,7 +36,7 @@ func NewLolService(pgStorage *pgxpool.Pool, esportsApiClient lolsports.EsportsAP
 		storage:          pgStorage,
 		esportsApiClient: esportsApiClient,
 		feedApiClient:    feedApiClient,
-		DB: Storage{pool: pgStorage},
+		DB:               Storage{pool: pgStorage},
 	}
 }
 
@@ -50,7 +51,7 @@ func (l *lolService) PopulateLeagues() error {
 	return nil
 }
 
-func (l *lolService) GetLeagues() ([]lolsports.League,error) {
+func (l *lolService) GetLeagues() ([]lolsports.League, error) {
 	return l.DB.GetLeagues()
 }
 
@@ -64,7 +65,7 @@ func (l *lolService) PopulateDBScheduleOfLeague(leagueExternalReference string) 
 		for {
 			scheduleData, err := l.esportsApiClient.GetSchedule("pt-BR", leagueExternalReference, olderPage)
 			if err != nil {
-				return errors.Wrapf(err, "[service error] unable to get schedules with older page = %s",olderPage)
+				return errors.Wrapf(err, "[service error] unable to get schedules with older page = %s", olderPage)
 			}
 			op, err := l.saveScheduleContent(scheduleData.Data.Schedule)
 			if err != nil {
@@ -142,7 +143,7 @@ func (l *lolService) saveScheduleContent(scheduleContent lolsports.Schedule) (st
 	return scheduleContent.Pages.Older, nil
 }
 
-func (l *lolService) GetEventsExternalRef() ([]*string,error) {
+func (l *lolService) GetEventsExternalRef() ([]*string, error) {
 	queryGetAllEventsRef := `
 SELECT 
 	e.external_reference
@@ -151,7 +152,7 @@ where e.state = 'completed';
 `
 	rows, err := l.storage.Query(context.Background(), queryGetAllEventsRef)
 	if err != nil {
-		return nil, errors.Wrap(err,"unable to get events from storage")
+		return nil, errors.Wrap(err, "unable to get events from storage")
 	}
 	defer rows.Close()
 
@@ -177,7 +178,7 @@ WHERE status = 'completed'
 `
 	rows, err := l.storage.Query(context.Background(), queryGetAllGames)
 	if err != nil {
-		return nil, errors.Wrap(err,"unable to get games from storage")
+		return nil, errors.Wrap(err, "unable to get games from storage")
 	}
 	defer rows.Close()
 
@@ -209,7 +210,7 @@ func (l *lolService) PopulateDBWithGameData(gameID string) error {
 		return err
 	}
 
-	if firstFrame == nil || len(firstFrame.Participants) == 0  {
+	if firstFrame == nil || len(firstFrame.Participants) == 0 {
 		return nil
 	}
 
@@ -233,19 +234,19 @@ func (l *lolService) PopulateDBWithGameData(gameID string) error {
 	}
 	currentTime := startTime
 	for {
-		liveMatchData, err := l.feedApiClient.GetDataFromLiveMatch(gameID,currentTime)
+		liveMatchData, err := l.feedApiClient.GetDataFromLiveMatch(gameID, currentTime)
 		if err != nil {
 			return err
 		}
 
-		if liveMatchData == nil || len(liveMatchData.Frames) == 0  {
+		if liveMatchData == nil || len(liveMatchData.Frames) == 0 {
 			return nil
 		}
 
 		for _, p := range liveMatchData.Frames[0].Participants {
-				if err := l.saveParticipantMetadata(gameSystemID, gameID, p, currentTime); err != nil {
-					return err
-				}
+			if err := l.saveParticipantMetadata(gameSystemID, gameID, p, currentTime); err != nil {
+				return err
+			}
 		}
 
 		detailsLiveMatch, err := l.feedApiClient.GetDetailsFromLiveMatch(gameID, currentTime)
@@ -257,7 +258,7 @@ func (l *lolService) PopulateDBWithGameData(gameID string) error {
 			return err
 		}
 
-		if detailsLiveMatch.Frames[0].GameState == "finished" || currentTime.After(startTime.Add(time.Minute * 25)){
+		if detailsLiveMatch.Frames[0].GameState == "finished" || currentTime.After(startTime.Add(time.Minute*25)) {
 			break
 		}
 		currentTime = currentTime.Add(time.Minute * 5)
@@ -266,7 +267,7 @@ func (l *lolService) PopulateDBWithGameData(gameID string) error {
 }
 
 func (l *lolService) getFirstFrameOfMatchGame(gameID string) (*lolsports.Frames, error) {
-	timeOfBegin := time.Date(1950,1,1,0,0,0,0,time.UTC)
+	timeOfBegin := time.Date(1950, 1, 1, 0, 0, 0, 0, time.UTC)
 	liveMatch, err := l.feedApiClient.GetDataFromLiveMatch(gameID, timeOfBegin)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to get data from live match, game reference = %s", gameID)
@@ -293,8 +294,8 @@ func (l *lolService) getFirstFrameOfMatchGame(gameID string) (*lolsports.Frames,
 			return nil, errors.Wrapf(err, "unable to get data from live match, game reference = %s", gameID)
 		}
 
-		if liveMatch == nil || len(liveMatch.Frames) == 0{
-				return nil, nil
+		if liveMatch == nil || len(liveMatch.Frames) == 0 {
+			return nil, nil
 		}
 
 		for _, f := range liveMatch.Frames {
@@ -338,21 +339,21 @@ VALUES ($1, $2, $3, $4, $5, $6);`
 (gameID, participantID, championID, esportsPlayerID, summonerName, role) 
 VALUES ($1, $2, $3, $4, $5, $6);`
 
-		for _, b := range gameDetail.GameMetadata.BlueTeamMetadata.ParticipantMetadata {
-			_, err := tx.Exec(
-				context.Background(),
-				queryInsertGameParticipantsInfo,
-				gameID,
-				b.ParticipantID,
-				b.ChampionID,
-				b.EsportsPlayerID,
-				b.SummonerName,
-				b.Role)
-			if err != nil {
-				_ = tx.Rollback(context.Background())
-				return uuid.Nil, err
-			}
+	for _, b := range gameDetail.GameMetadata.BlueTeamMetadata.ParticipantMetadata {
+		_, err := tx.Exec(
+			context.Background(),
+			queryInsertGameParticipantsInfo,
+			gameID,
+			b.ParticipantID,
+			b.ChampionID,
+			b.EsportsPlayerID,
+			b.SummonerName,
+			b.Role)
+		if err != nil {
+			_ = tx.Rollback(context.Background())
+			return uuid.Nil, err
 		}
+	}
 
 	for _, b := range gameDetail.GameMetadata.RedTeamMetadata.ParticipantMetadata {
 		_, err := tx.Exec(
@@ -397,7 +398,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`
 		participantData.WardsPlaced,
 		participantData.WardsDestroyed)
 	if err != nil {
-		return  err
+		return err
 	}
 	return nil
 }
@@ -429,7 +430,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
 		liveGameDetail.Frames[0].RedTeam.TotalKills,
 		liveGameDetail.Frames[0].RedTeam.Dragons)
 	if err != nil {
-		return  err
+		return err
 	}
 	return nil
 }
@@ -442,7 +443,7 @@ func (l *lolService) GetLiveGames() (*lolsports.EventsLiveData, error) {
 	return data, nil
 }
 
-func (l *lolService) GetTeamsHistoricalData(teamRedName, teamBlueName string) (lolsports.HistoricalData, error) {
+func (l *lolService) GetTeamsHistoricalData(teamRedName, teamBlueName string) (*lolsports.HistoricalData, error) {
 	fr3RedTeam, err := l.getFormRatio(teamRedName, 3)
 	if err != nil {
 		return nil, err
@@ -463,12 +464,177 @@ func (l *lolService) GetTeamsHistoricalData(teamRedName, teamBlueName string) (l
 		return nil, err
 	}
 
+	pastGamesStats3RedTeamAt15, err := l.getPastGamesStats(teamRedName, 3, 3)
+	if err != nil {
+		return nil, err
+	}
+
+	pastGamesStats3RedTeamAt25, err := l.getPastGamesStats(teamRedName, 3, 5)
+	if err != nil {
+		return nil, err
+	}
+
+	pastGamesStats5RedTeamAt15, err := l.getPastGamesStats(teamRedName, 5, 3)
+	if err != nil {
+		return nil, err
+	}
+
+	pastGamesStats5RedTeamAt25, err := l.getPastGamesStats(teamRedName, 5, 5)
+	if err != nil {
+		return nil, err
+	}
+
+	pastGamesStats3BlueTeamAt15, err := l.getPastGamesStats(teamBlueName, 3, 3)
+	if err != nil {
+		return nil, err
+	}
+
+	pastGamesStats3BlueTeamAt25, err := l.getPastGamesStats(teamBlueName, 3, 5)
+	if err != nil {
+		return nil, err
+	}
+
+	pastGamesStats5BlueTeamAt15, err := l.getPastGamesStats(teamBlueName, 5, 3)
+	if err != nil {
+		return nil, err
+	}
+
+	pastGamesStats5BlueTeamAt25, err := l.getPastGamesStats(teamBlueName, 5, 5)
+	if err != nil {
+		return nil, err
+	}
+
+	return &lolsports.HistoricalData{
+		TeamA3BaronsMean25:     pastGamesStats3BlueTeamAt25.NumberOfBaronsMean,
+		TeamA3DragonsMean15:    pastGamesStats3BlueTeamAt15.NumberOfDragonsMean,
+		TeamA3DragonsMean25:    pastGamesStats3BlueTeamAt25.NumberOfDragonsMean,
+		TeamA3FormRatio:        fr3BlueTeam,
+		TeamA3GoldTotalMean15:  pastGamesStats3BlueTeamAt15.NumberOfTotalGoldMean,
+		TeamA3GoldTotalMean25:  pastGamesStats3BlueTeamAt25.NumberOfTotalGoldMean,
+		TeamA3InhibitorsMean15: pastGamesStats3BlueTeamAt15.NumberOfInhibitorsMean,
+		TeamA3InhibitorsMean25: pastGamesStats3BlueTeamAt25.NumberOfInhibitorsMean,
+		TeamA3KillsMean15:      pastGamesStats3BlueTeamAt15.NumberOfKillsMean,
+		TeamA3KillsMean25:      pastGamesStats3BlueTeamAt25.NumberOfKillsMean,
+		TeamA3TowersMean15:     pastGamesStats3BlueTeamAt15.NumberOfTowersMean,
+		TeamA3TowersMean25:     pastGamesStats3BlueTeamAt25.NumberOfTowersMean,
+		TeamA5BaronsMean25:     pastGamesStats5BlueTeamAt25.NumberOfBaronsMean,
+		TeamA5DragonsMean15:    pastGamesStats5BlueTeamAt15.NumberOfDragonsMean,
+		TeamA5DragonsMean25:    pastGamesStats5BlueTeamAt25.NumberOfDragonsMean,
+		TeamA5FormRatio:        fr5BlueTeam,
+		TeamA5GoldTotalMean15:  pastGamesStats5BlueTeamAt15.NumberOfTotalGoldMean,
+		TeamA5GoldTotalMean25:  pastGamesStats5BlueTeamAt25.NumberOfTotalGoldMean,
+		TeamA5InhibitorsMean15: pastGamesStats5BlueTeamAt15.NumberOfInhibitorsMean,
+		TeamA5InhibitorsMean25: pastGamesStats5BlueTeamAt25.NumberOfInhibitorsMean,
+		TeamA5KillsMean15:      pastGamesStats5BlueTeamAt15.NumberOfKillsMean,
+		TeamA5KillsMean25:      pastGamesStats5BlueTeamAt25.NumberOfKillsMean,
+		TeamA5TowersMean15:     pastGamesStats5BlueTeamAt15.NumberOfTowersMean,
+		TeamA5TowersMean25:     pastGamesStats5BlueTeamAt25.NumberOfTowersMean,
+		TeamB3BaronsMean25:     pastGamesStats3RedTeamAt25.NumberOfBaronsMean,
+		TeamB3DragonsMean15:    pastGamesStats3RedTeamAt15.NumberOfDragonsMean,
+		TeamB3DragonsMean25:    pastGamesStats3RedTeamAt25.NumberOfDragonsMean,
+		TeamB3FormRatio:        fr3RedTeam,
+		TeamB3GoldTotalMean15:  pastGamesStats3RedTeamAt15.NumberOfTotalGoldMean,
+		TeamB3GoldTotalMean25:  pastGamesStats3RedTeamAt25.NumberOfTotalGoldMean,
+		TeamB3InhibitorsMean15: pastGamesStats3RedTeamAt15.NumberOfInhibitorsMean,
+		TeamB3InhibitorsMean25: pastGamesStats3RedTeamAt25.NumberOfInhibitorsMean,
+		TeamB3KillsMean15:      pastGamesStats3RedTeamAt15.NumberOfKillsMean,
+		TeamB3KillsMean25:      pastGamesStats3RedTeamAt25.NumberOfKillsMean,
+		TeamB3TowersMean15:     pastGamesStats3RedTeamAt15.NumberOfTowersMean,
+		TeamB3TowersMean25:     pastGamesStats3RedTeamAt25.NumberOfTowersMean,
+		TeamB5BaronsMean25:     pastGamesStats5RedTeamAt25.NumberOfBaronsMean,
+		TeamB5DragonsMean15:    pastGamesStats5RedTeamAt15.NumberOfDragonsMean,
+		TeamB5DragonsMean25:    pastGamesStats5RedTeamAt25.NumberOfDragonsMean,
+		TeamB5FormRatio:        fr5RedTeam,
+		TeamB5GoldTotalMean15:  pastGamesStats5RedTeamAt15.NumberOfTotalGoldMean,
+		TeamB5GoldTotalMean25:  pastGamesStats5RedTeamAt25.NumberOfTotalGoldMean,
+		TeamB5InhibitorsMean15: pastGamesStats5RedTeamAt15.NumberOfInhibitorsMean,
+		TeamB5InhibitorsMean25: pastGamesStats5RedTeamAt25.NumberOfInhibitorsMean,
+		TeamB5KillsMean15:      pastGamesStats5RedTeamAt15.NumberOfKillsMean,
+		TeamB5KillsMean25:      pastGamesStats5RedTeamAt25.NumberOfKillsMean,
+		TeamB5TowersMean15:     pastGamesStats5RedTeamAt15.NumberOfTowersMean,
+		TeamB5TowersMean25:     pastGamesStats5RedTeamAt25.NumberOfTowersMean,
+	}, nil
 }
 
 func (l *lolService) getFormRatio(teamName string, numberOfPastGames int) (float64, error) {
-	panic("implement me")
+	lastMatchResults, err := l.DB.GetLastMatchResults(teamName, numberOfPastGames)
+	if err != nil {
+		return 0.0, err
+	}
+
+	var ratio float64
+	if len(lastMatchResults) > 0 {
+		numberOfWins := 0
+		for _, lmr := range lastMatchResults {
+			if lmr.TeamAName == teamName {
+				if services.IsMatchWinner(lmr.BestOf, lmr.TeamAGameWins) {
+					numberOfWins += 1
+				}
+			} else if lmr.TeamBName == teamName {
+				if services.IsMatchWinner(lmr.BestOf, lmr.TeamBGameWins) {
+					numberOfWins += 1
+				}
+			}
+		}
+		ratio = float64(numberOfWins) / float64(len(lastMatchResults))
+	} else {
+		ratio = 0.0
+	}
+
+	return ratio, nil
 }
 
 func (l *lolService) getPastGamesStats(teamName string, numberOfPastGames int, gameMoment int) (lol_transformer.StatsInfo, error) {
-	panic("implement me")
+	var statsInfo lol_transformer.StatsInfo
+	lastMatchStats, err := l.DB.GetLastMatchStats(teamName, numberOfPastGames, gameMoment)
+	if err != nil {
+		return statsInfo, err
+	}
+
+	if len(lastMatchStats) > 0 {
+		numberOfBaronsMean := 0
+		numberOfDragonsMean := 0
+		numberOfInhibitorsMean := 0
+		numberOfTotalGoldMean := 0
+		numberOfKillsMean := 0
+		numberOfTowersMean := 0
+
+		for _, lms := range lastMatchStats {
+			if lms.TeamAName == teamName {
+				numberOfBaronsMean += lms.TeamBlueTotalBarons
+				numberOfDragonsMean += len(lms.TeamBlueDragons)
+				numberOfInhibitorsMean += lms.TeamBlueTotalInhibitors
+				numberOfTotalGoldMean += lms.TeamBlueTotalGold
+				numberOfKillsMean += lms.TeamBlueTotalKills
+				numberOfTowersMean += lms.TeamBlueTotalTowers
+			} else if lms.TeamBName == teamName {
+				numberOfBaronsMean += lms.TeamRedTotalBarons
+				numberOfDragonsMean += len(lms.TeamRedDragons)
+				numberOfInhibitorsMean += lms.TeamRedTotalInhibitors
+				numberOfTotalGoldMean += lms.TeamRedTotalGold
+				numberOfKillsMean += lms.TeamRedTotalKills
+				numberOfTowersMean += lms.TeamRedTotalTowers
+			}
+		}
+
+		statsInfo = lol_transformer.StatsInfo{
+			NumberOfBaronsMean:     float64(numberOfBaronsMean) / float64(len(lastMatchStats)),
+			NumberOfDragonsMean:    float64(numberOfDragonsMean) / float64(len(lastMatchStats)),
+			NumberOfInhibitorsMean: float64(numberOfInhibitorsMean) / float64(len(lastMatchStats)),
+			NumberOfTotalGoldMean:  float64(numberOfTotalGoldMean) / float64(len(lastMatchStats)),
+			NumberOfKillsMean:      float64(numberOfKillsMean) / float64(len(lastMatchStats)),
+			NumberOfTowersMean:     float64(numberOfTowersMean) / float64(len(lastMatchStats)),
+		}
+	} else {
+		statsInfo = lol_transformer.StatsInfo{
+			NumberOfBaronsMean:     0.0,
+			NumberOfDragonsMean:    0.0,
+			NumberOfInhibitorsMean: 0.0,
+			NumberOfTotalGoldMean:  0.0,
+			NumberOfKillsMean:      0.0,
+			NumberOfTowersMean:     0.0,
+		}
+	}
+
+	return statsInfo, nil
 }

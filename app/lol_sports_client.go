@@ -18,7 +18,7 @@ type LolSportsClient interface {
 	PopulateHistoricalData()
 	GetLiveGames() lolsports.EventsLiveData
 	GetCurrentLiveGame(gameID string) *lolsports.LiveMatchData
-	GetTeamsHistoricalData(redTeamName, blueTeamName string) (lolsports.HistoricalData, error)
+	GetTeamsHistoricalData(redTeamName, blueTeamName string) (*lolsports.HistoricalData, error)
 	Close()
 }
 
@@ -161,7 +161,7 @@ func (a *lolSportsClient) GetCurrentLiveGame(gameID string) *lolsports.LiveMatch
 	return liveGames
 }
 
-func (a *lolSportsClient) GetTeamsHistoricalData(teamRedName, teamBlueName string) (lolsports.HistoricalData, error) {
+func (a *lolSportsClient) GetTeamsHistoricalData(teamRedName, teamBlueName string) (*lolsports.HistoricalData, error) {
 	return a.LolService.GetTeamsHistoricalData(teamRedName, teamBlueName)
 }
 

@@ -27,7 +27,7 @@ func initRoutes(wg *sync.WaitGroup) {
 	router := gin.Default()
 
 	router.GET("/ping", func(c *gin.Context) {
-		 c.Data(http.StatusOK, "text/html", []byte("pong"))
+		c.Data(http.StatusOK, "text/html", []byte("pong"))
 	})
 
 	router.GET("/sync_data", func(c *gin.Context) {
@@ -52,7 +52,6 @@ func initRoutes(wg *sync.WaitGroup) {
 		c.Data(http.StatusOK, "text/html", []byte("data transformed"))
 	})
 
-
 	if err := router.Run(); err != nil {
 		panic(err)
 	}
@@ -76,23 +75,32 @@ func handleLiveGames(wg *sync.WaitGroup) {
 						_, ok := runningEvents[g.ID]
 						if !ok {
 							runningEvents[g.ID] = true
+
+							var historicalData *lolsports.HistoricalData
 							if g.Teams[0].Side == "red" {
-								historicalData, err := application.GetTeamsHistoricalData(g.Teams[0].Name, g.Teams[1].Name)
+								hd, err := application.GetTeamsHistoricalData(g.Teams[0].Name, g.Teams[1].Name)
 								if err != nil {
 									fmt.Println("Unable to get historical data")
 								}
+								historicalData = hd
 							} else if g.Teams[0].Side == "blue" {
-								historicalData, err := application.GetTeamsHistoricalData(g.Teams[1].Name, g.Teams[0].Name)
+								hd, err := application.GetTeamsHistoricalData(g.Teams[1].Name, g.Teams[0].Name)
 								if err != nil {
 									fmt.Println("Unable to get historical data")
 								}
+								historicalData = hd
 							} else {
 								fmt.Println("Unrecognized team side")
 							}
+
+							if historicalData == nil {
+								fmt.Println("unable to get historical data with success")
+							}
+
 							for {
 								currentGameData := application.GetCurrentLiveGame(g.ID)
 								if currentGameData != nil {
-									if len(currentGameData.Frames) > 0 && len(currentGameData.Frames[0].Participants) > 0{
+									if len(currentGameData.Frames) > 0 && len(currentGameData.Frames[0].Participants) > 0 {
 										if currentGameData.Frames[0].Participants[0].TotalGoldEarned > 0 {
 											break
 										}
@@ -105,14 +113,15 @@ func handleLiveGames(wg *sync.WaitGroup) {
 								go func(m map[string]bool, lg lolsports.Events, gameMoment int) {
 									time.Sleep(time.Duration(gameMoment*5) * time.Minute)
 									type DataToBeSent struct {
-										ID               string `json:"id"`
-										TeamAWins        int    `json:"team_a_wins"`
-										TeamALosses      int    `json:"team_a_losses"`
-										TeamBWins        int    `json:"team_b_wins"`
-										TeamBLosses      int    `json:"team_b_losses"`
-										GameMoment       int    `json:"game_moment"`
-										BlueSideTeamName string `json:"blue_side_team_name"`
-										RedSideTeamName  string `json:"red_side_team_name"`
+										ID               string                    `json:"id"`
+										TeamAWins        int                       `json:"team_a_wins"`
+										TeamALosses      int                       `json:"team_a_losses"`
+										TeamBWins        int                       `json:"team_b_wins"`
+										TeamBLosses      int                       `json:"team_b_losses"`
+										GameMoment       int                       `json:"game_moment"`
+										BlueSideTeamName string                    `json:"blue_side_team_name"`
+										RedSideTeamName  string                    `json:"red_side_team_name"`
+										HistoricalInfo   *lolsports.HistoricalData `json:"historical_info"`
 									}
 									blueTeamName := ""
 									redTeamName := ""
@@ -132,6 +141,7 @@ func handleLiveGames(wg *sync.WaitGroup) {
 										GameMoment:       gameMoment,
 										BlueSideTeamName: blueTeamName,
 										RedSideTeamName:  redTeamName,
+										HistoricalInfo:   historicalData,
 									}
 									data, err := json.Marshal(dataToBeSent)
 									if err != nil {
