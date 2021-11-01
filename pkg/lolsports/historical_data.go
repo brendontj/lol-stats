@@ -1,0 +1,52 @@
+package lolsports
+
+type HistoricalData struct {
+	TeamA3BaronsMean25 float64
+	TeamA3DragonsMean15 float64
+	TeamA3DragonsMean25 float64
+	TeamA3FormRatio float64
+	TeamA3GoldTotalMean15 float64
+	TeamA3GoldTotalMean25 float64
+	TeamA3InhibitorsMean15 float64
+	TeamA3InhibitorsMean25 float64
+	TeamA3KillsMean15 float64
+	TeamA3KillsMean25 float64
+	TeamA3TowersMean15 float64
+	TeamA3TowersMean25 float64
+	TeamA5BaronsMean25 float64
+	TeamA5DragonsMean15 float64
+	TeamA5DragonsMean25 float64
+	TeamA5FormRatio float64
+	TeamA5GoldTotalMean15 float64
+	TeamA5GoldTotalMean25 float64
+	TeamA5InhibitorsMean15 float64
+	TeamA5InhibitorsMean25 float64
+	TeamA5KillsMean15 float64
+	TeamA5KillsMean25 float64
+	TeamA5TowersMean15 float64
+	TeamA5TowersMean25 float64
+	TeamB3BaronsMean25 float64
+	TeamB3DragonsMean15 float64
+	TeamB3DragonsMean25 float64
+	TeamB3FormRatio float64
+	TeamB3GoldTotalMean15 float64
+	TeamB3GoldTotalMean25 float64
+	TeamB3InhibitorsMean15 float64
+	TeamB3InhibitorsMean25 float64
+	TeamB3KillsMean15 float64
+	TeamB3KillsMean25 float64
+	TeamB3TowersMean15 float64
+	TeamB3TowersMean25 float64
+	TeamB5BaronsMean25 float64
+	TeamB5DragonsMean15 float64
+	TeamB5DragonsMean25 float64
+	TeamB5FormRatio float64
+	TeamB5GoldTotalMean15 float64
+	TeamB5GoldTotalMean25 float64
+	TeamB5InhibitorsMean15 float64
+	TeamB5InhibitorsMean25 float64
+	TeamB5KillsMean15 float64
+	TeamB5KillsMean25 float64
+	TeamB5TowersMean15 float64
+	TeamB5TowersMean25 float64
+}

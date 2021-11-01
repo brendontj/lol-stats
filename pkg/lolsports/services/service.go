@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	lol_transformer "github.com/brendontj/lol-stats/pkg/lol-transformer"
 	"github.com/brendontj/lol-stats/pkg/lolsports"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
@@ -19,6 +20,7 @@ type Service interface {
 	GetGamesReference() ([]string,error)
 	PopulateDBWithGameData(gameID string) error
 	GetLiveGames() (*lolsports.EventsLiveData, error)
+	GetTeamsHistoricalData(redTeamName, blueTeamName string) (lolsports.HistoricalData, error)
 }
 
 type lolService struct {
@@ -438,4 +440,35 @@ func (l *lolService) GetLiveGames() (*lolsports.EventsLiveData, error) {
 		return nil, fmt.Errorf("[SERVICE ERROR] unable to get live games, err: %v", err)
 	}
 	return data, nil
+}
+
+func (l *lolService) GetTeamsHistoricalData(teamRedName, teamBlueName string) (lolsports.HistoricalData, error) {
+	fr3RedTeam, err := l.getFormRatio(teamRedName, 3)
+	if err != nil {
+		return nil, err
+	}
+
+	fr5RedTeam, err := l.getFormRatio(teamRedName, 5)
+	if err != nil {
+		return nil, err
+	}
+
+	fr3BlueTeam, err := l.getFormRatio(teamBlueName, 3)
+	if err != nil {
+		return nil, err
+	}
+
+	fr5BlueTeam, err := l.getFormRatio(teamBlueName, 5)
+	if err != nil {
+		return nil, err
+	}
+
+}
+
+func (l *lolService) getFormRatio(teamName string, numberOfPastGames int) (float64, error) {
+	panic("implement me")
+}
+
+func (l *lolService) getPastGamesStats(teamName string, numberOfPastGames int, gameMoment int) (lol_transformer.StatsInfo, error) {
+	panic("implement me")
 }

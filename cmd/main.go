@@ -76,6 +76,19 @@ func handleLiveGames(wg *sync.WaitGroup) {
 						_, ok := runningEvents[g.ID]
 						if !ok {
 							runningEvents[g.ID] = true
+							if g.Teams[0].Side == "red" {
+								historicalData, err := application.GetTeamsHistoricalData(g.Teams[0].Name, g.Teams[1].Name)
+								if err != nil {
+									fmt.Println("Unable to get historical data")
+								}
+							} else if g.Teams[0].Side == "blue" {
+								historicalData, err := application.GetTeamsHistoricalData(g.Teams[1].Name, g.Teams[0].Name)
+								if err != nil {
+									fmt.Println("Unable to get historical data")
+								}
+							} else {
+								fmt.Println("Unrecognized team side")
+							}
 							for {
 								currentGameData := application.GetCurrentLiveGame(g.ID)
 								if currentGameData != nil {
