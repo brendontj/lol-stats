@@ -39,9 +39,9 @@ func NewLolSportsClient(baseURI, token, baseURIFeed string) LolSportsClient {
 }
 
 func (a *lolSportsClient) Start() {
-	host := util.GetEnvVariable("HOST")
-	port := util.GetEnvVariable("PORT")
-	database := util.GetEnvVariable("DATABASE")
+	host := util.GetEnvVariable("DB_HOST")
+	port := util.GetEnvVariable("DB_PORT")
+	database := util.GetEnvVariable("DB_NAME")
 	dbUser := util.GetEnvVariable("DB_USER")
 	dbPassword := util.GetEnvVariable("DB_PASSWORD")
 
