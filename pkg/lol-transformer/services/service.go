@@ -32,62 +32,62 @@ func (s *Service) FillPastGamesWithHistoricData() error {
 	}
 
 	for _, m := range matches {
-		if err := s.fillFormRatio(tx,m.ID, m.TeamAName, 5, m.GameTime, "A"); err != nil {
+		if err := s.fillFormRatio(tx, m.ID, m.TeamAName, 5, m.GameTime, "A"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillFormRatio(tx,m.ID, m.TeamBName, 5, m.GameTime, "B"); err != nil {
+		if err := s.fillFormRatio(tx, m.ID, m.TeamBName, 5, m.GameTime, "B"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillFormRatio(tx,m.ID, m.TeamAName, 3, m.GameTime, "A"); err != nil {
+		if err := s.fillFormRatio(tx, m.ID, m.TeamAName, 3, m.GameTime, "A"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillFormRatio(tx,m.ID, m.TeamBName, 3, m.GameTime, "B"); err != nil {
+		if err := s.fillFormRatio(tx, m.ID, m.TeamBName, 3, m.GameTime, "B"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillPastStats(tx,m.ID, m.TeamAName, 5, 4, m.GameTime, "A"); err != nil {
+		if err := s.fillPastStats(tx, m.ID, m.TeamAName, 5, 4, m.GameTime, "A"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillPastStats(tx,m.ID, m.TeamBName, 5, 4, m.GameTime, "B"); err != nil {
+		if err := s.fillPastStats(tx, m.ID, m.TeamBName, 5, 4, m.GameTime, "B"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillPastStats(tx,m.ID, m.TeamAName, 3, 4, m.GameTime, "A"); err != nil {
+		if err := s.fillPastStats(tx, m.ID, m.TeamAName, 3, 4, m.GameTime, "A"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillPastStats(tx,m.ID, m.TeamBName, 3, 4, m.GameTime, "B"); err != nil {
+		if err := s.fillPastStats(tx, m.ID, m.TeamBName, 3, 4, m.GameTime, "B"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillPastStats(tx,m.ID, m.TeamAName, 5, 6, m.GameTime, "A"); err != nil {
+		if err := s.fillPastStats(tx, m.ID, m.TeamAName, 5, 6, m.GameTime, "A"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillPastStats(tx,m.ID, m.TeamBName, 5, 6, m.GameTime, "B"); err != nil {
+		if err := s.fillPastStats(tx, m.ID, m.TeamBName, 5, 6, m.GameTime, "B"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillPastStats(tx,m.ID, m.TeamAName, 3, 6, m.GameTime, "A"); err != nil {
+		if err := s.fillPastStats(tx, m.ID, m.TeamAName, 3, 6, m.GameTime, "A"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
 
-		if err := s.fillPastStats(tx,m.ID, m.TeamBName, 3, 6, m.GameTime, "B"); err != nil {
+		if err := s.fillPastStats(tx, m.ID, m.TeamBName, 3, 6, m.GameTime, "B"); err != nil {
 			_ = tx.Rollback(context.Background())
 			return err
 		}
@@ -99,23 +99,22 @@ func (s *Service) FillPastGamesWithHistoricData() error {
 	return nil
 }
 
-func (s *Service) fillFormRatio(tx Transaction,gameID uuid.UUID, teamName string, numberOfPastGames int, gameTime time.Time, teamOrder string) error {
+func (s *Service) fillFormRatio(tx Transaction, gameID uuid.UUID, teamName string, numberOfPastGames int, gameTime time.Time, teamOrder string) error {
 	lastMatchResults, err := s.DB.GetLastMatchResults(tx, teamName, numberOfPastGames, gameTime)
 	if err != nil {
 		return err
 	}
-
 
 	var ratio float64
 	if len(lastMatchResults) > 0 {
 		numberOfWins := 0
 		for _, lmr := range lastMatchResults {
 			if lmr.TeamAName == teamName {
-				if isMatchWinner(lmr.BestOf, lmr.TeamAGameWins) {
+				if IsMatchWinner(lmr.BestOf, lmr.TeamAGameWins) {
 					numberOfWins += 1
 				}
 			} else if lmr.TeamBName == teamName {
-				if isMatchWinner(lmr.BestOf, lmr.TeamBGameWins) {
+				if IsMatchWinner(lmr.BestOf, lmr.TeamBGameWins) {
 					numberOfWins += 1
 				}
 			}
@@ -128,7 +127,7 @@ func (s *Service) fillFormRatio(tx Transaction,gameID uuid.UUID, teamName string
 	return s.DB.UpdateMatchWithWinnerRatio(tx, gameID, teamOrder, ratio, numberOfPastGames)
 }
 
-func (s *Service) fillPastStats(tx Transaction,gameID uuid.UUID, teamName string, numberOfPastGames int, gameMoment int, gameTime time.Time, teamOrder string) error {
+func (s *Service) fillPastStats(tx Transaction, gameID uuid.UUID, teamName string, numberOfPastGames int, gameMoment int, gameTime time.Time, teamOrder string) error {
 	lastMatchStats, err := s.DB.GetLastMatchStats(teamName, numberOfPastGames, gameTime, gameMoment)
 	if err != nil {
 		return err
@@ -161,12 +160,12 @@ func (s *Service) fillPastStats(tx Transaction,gameID uuid.UUID, teamName string
 		}
 
 		statsInfo = lol_transformer.StatsInfo{
-			NumberOfBaronsMean:     float64(numberOfBaronsMean)/float64(len(lastMatchStats)),
-			NumberOfDragonsMean:    float64(numberOfDragonsMean)/float64(len(lastMatchStats)),
-			NumberOfInhibitorsMean: float64(numberOfInhibitorsMean)/float64(len(lastMatchStats)),
-			NumberOfTotalGoldMean:  float64(numberOfTotalGoldMean)/float64(len(lastMatchStats)),
-			NumberOfKillsMean:      float64(numberOfKillsMean)/float64(len(lastMatchStats)),
-			NumberOfTowersMean:     float64(numberOfTowersMean)/float64(len(lastMatchStats)),
+			NumberOfBaronsMean:     float64(numberOfBaronsMean) / float64(len(lastMatchStats)),
+			NumberOfDragonsMean:    float64(numberOfDragonsMean) / float64(len(lastMatchStats)),
+			NumberOfInhibitorsMean: float64(numberOfInhibitorsMean) / float64(len(lastMatchStats)),
+			NumberOfTotalGoldMean:  float64(numberOfTotalGoldMean) / float64(len(lastMatchStats)),
+			NumberOfKillsMean:      float64(numberOfKillsMean) / float64(len(lastMatchStats)),
+			NumberOfTowersMean:     float64(numberOfTowersMean) / float64(len(lastMatchStats)),
 		}
 	} else {
 		statsInfo = lol_transformer.StatsInfo{
@@ -179,11 +178,10 @@ func (s *Service) fillPastStats(tx Transaction,gameID uuid.UUID, teamName string
 		}
 	}
 
-
-	return s.DB.UpdateMatchWithPastStats(tx,gameID,teamOrder, statsInfo, numberOfPastGames, gameMoment)
+	return s.DB.UpdateMatchWithPastStats(tx, gameID, teamOrder, statsInfo, numberOfPastGames, gameMoment)
 }
 
-func isMatchWinner(bestOf int, numberOfWins int) bool {
+func IsMatchWinner(bestOf int, numberOfWins int) bool {
 	switch bestOf {
 	case 1:
 		if numberOfWins == 1 {
