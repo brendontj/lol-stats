@@ -20,8 +20,8 @@ CREATE TABLE game.participants_stats (
     assists int not null,
     total_gold_earned int not null,
     creep_score int not null,
-    kill_participation decimal(15,7) not null,
-    champion_damage_share decimal(15,7) not null,
+    kill_participation decimal(15,2) not null,
+    champion_damage_share decimal(15,2) not null,
     wards_placed int not null,
     wards_destroyed int not null,
     unique (game_timestamp,participantID,game_externalID)

@@ -16,7 +16,7 @@ CREATE TABLE schedule.matches (
     team_a_game_wins INTEGER NOT NULL,
     team_b_game_wins INTEGER NOT NULL,
     best_of INTEGER NOT NULL,
-    event_start_time TIMESTAMP,
+    event_start_time TIMESTAMP NOT NULL,
     state VARCHAR NOT NULL,
     league_name VARCHAR NOT NULL
 );
